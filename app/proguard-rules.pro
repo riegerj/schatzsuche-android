@@ -1,0 +1,1 @@
+# Schatzsuche ProGuard rules

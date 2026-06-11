@@ -1,0 +1,140 @@
+package de.schatzsuche.app.data.repository
+
+import android.content.Context
+import de.schatzsuche.app.data.dao.HuntSessionDao
+import de.schatzsuche.app.data.dao.HuntStepDao
+import de.schatzsuche.app.data.dao.QrCodeDao
+import de.schatzsuche.app.data.dao.StepCompletionDao
+import de.schatzsuche.app.data.dao.TreasureHuntDao
+import de.schatzsuche.app.data.database.AppDatabase
+import de.schatzsuche.app.data.model.HuntSessionEntity
+import de.schatzsuche.app.data.model.HuntSessionStatus
+import de.schatzsuche.app.data.model.HuntStepEntity
+import de.schatzsuche.app.data.model.QrCodeEntity
+import de.schatzsuche.app.data.model.StepCompletionEntity
+import de.schatzsuche.app.data.model.TaskResponse
+import de.schatzsuche.app.data.model.TreasureHuntEntity
+import de.schatzsuche.app.data.model.toResponsesJson
+import de.schatzsuche.app.util.PdfGenerator
+import de.schatzsuche.app.util.QrCodeUtil
+import kotlinx.coroutines.flow.Flow
+import java.io.File
+
+class SchatzsucheRepository(context: Context) {
+    private val db = AppDatabase.getInstance(context)
+    private val appContext = context.applicationContext
+
+    val qrCodeDao: QrCodeDao = db.qrCodeDao()
+    val treasureHuntDao: TreasureHuntDao = db.treasureHuntDao()
+    val huntStepDao: HuntStepDao = db.huntStepDao()
+    val huntSessionDao: HuntSessionDao = db.huntSessionDao()
+    val stepCompletionDao: StepCompletionDao = db.stepCompletionDao()
+
+    fun observeQrCodes(): Flow<List<QrCodeEntity>> = qrCodeDao.observeAll()
+    fun observeHunts(): Flow<List<TreasureHuntEntity>> = treasureHuntDao.observeAll()
+    fun observeHunt(id: String): Flow<TreasureHuntEntity?> = treasureHuntDao.observeById(id)
+    fun observeSteps(huntId: String): Flow<List<HuntStepEntity>> = huntStepDao.observeByHunt(huntId)
+    fun observeSessions(): Flow<List<HuntSessionEntity>> = huntSessionDao.observeAll()
+    fun observeSession(id: String): Flow<HuntSessionEntity?> = huntSessionDao.observeById(id)
+    fun observeCompletions(sessionId: String): Flow<List<StepCompletionEntity>> =
+        stepCompletionDao.observeBySession(sessionId)
+
+    suspend fun getQrCodeCount(): Int = qrCodeDao.count()
+
+    suspend fun ensureQrCodes(count: Int = 12) {
+        val existing = qrCodeDao.count()
+        if (existing >= count) return
+        val codes = QrCodeUtil.generateCodes(count)
+        qrCodeDao.insertAll(codes)
+    }
+
+    suspend fun regenerateQrCodes(count: Int): File {
+        qrCodeDao.deleteAll()
+        val codes = QrCodeUtil.generateCodes(count)
+        qrCodeDao.insertAll(codes)
+        return PdfGenerator.generateQrCardsPdf(appContext, codes)
+    }
+
+    suspend fun generatePdfFromExisting(): File {
+        val codes = qrCodeDao.getAll()
+        return PdfGenerator.generateQrCardsPdf(appContext, codes)
+    }
+
+    suspend fun saveHunt(hunt: TreasureHuntEntity) = treasureHuntDao.insert(hunt)
+    suspend fun updateHunt(hunt: TreasureHuntEntity) = treasureHuntDao.update(hunt)
+    suspend fun deleteHunt(id: String) {
+        huntStepDao.deleteByHunt(id)
+        treasureHuntDao.delete(id)
+    }
+
+    suspend fun saveStep(step: HuntStepEntity) = huntStepDao.insert(step)
+    suspend fun updateStep(step: HuntStepEntity) = huntStepDao.update(step)
+    suspend fun deleteStep(id: String) = huntStepDao.delete(id)
+    suspend fun getSteps(huntId: String) = huntStepDao.getByHunt(huntId)
+    suspend fun getQrCodeByPayload(payload: String) = qrCodeDao.getByPayload(payload)
+    suspend fun getQrCodeById(id: String) = qrCodeDao.getById(id)
+
+    suspend fun startSession(huntId: String, participantName: String): HuntSessionEntity {
+        val session = HuntSessionEntity(
+            huntId = huntId,
+            participantName = participantName,
+            status = HuntSessionStatus.IN_PROGRESS,
+            startedAt = System.currentTimeMillis()
+        )
+        huntSessionDao.insert(session)
+        return session
+    }
+
+    suspend fun cancelSession(sessionId: String) {
+        val session = huntSessionDao.getById(sessionId) ?: return
+        huntSessionDao.update(
+            session.copy(
+                status = HuntSessionStatus.CANCELLED,
+                finishedAt = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun completeStep(
+        session: HuntSessionEntity,
+        step: HuntStepEntity,
+        stepStartedAt: Long,
+        responses: List<TaskResponse>
+    ): HuntSessionEntity {
+        stepCompletionDao.insert(
+            StepCompletionEntity(
+                sessionId = session.id,
+                stepId = step.id,
+                stepIndex = step.orderIndex,
+                startedAt = stepStartedAt,
+                completedAt = System.currentTimeMillis(),
+                taskResponsesJson = responses.toResponsesJson()
+            )
+        )
+        val steps = huntStepDao.getByHunt(session.huntId)
+        val nextIndex = step.orderIndex + 1
+        val isLast = nextIndex >= steps.size
+        val updated = session.copy(
+            currentStepIndex = nextIndex,
+            status = if (isLast) HuntSessionStatus.COMPLETED else HuntSessionStatus.IN_PROGRESS,
+            finishedAt = if (isLast) System.currentTimeMillis() else null
+        )
+        huntSessionDao.update(updated)
+        return updated
+    }
+
+    suspend fun getSessionDetails(sessionId: String): SessionDetails? {
+        val session = huntSessionDao.getById(sessionId) ?: return null
+        val hunt = treasureHuntDao.getById(session.huntId) ?: return null
+        val steps = huntStepDao.getByHunt(session.huntId)
+        val completions = stepCompletionDao.getBySession(sessionId)
+        return SessionDetails(session, hunt, steps, completions)
+    }
+}
+
+data class SessionDetails(
+    val session: HuntSessionEntity,
+    val hunt: TreasureHuntEntity,
+    val steps: List<HuntStepEntity>,
+    val completions: List<StepCompletionEntity>
+)
