@@ -98,13 +98,11 @@ fun PlayScreen(
                             Text(step.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             ContentBlocksDisplay(step.instructionJson.toContentBlocks())
                             Spacer(Modifier.height(8.dp))
-                            uiState.qrCode?.let { qr ->
-                                Text(
-                                    "Suche QR-Karte #${qr.number.toString().padStart(2, '0')}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                            }
+                            Text(
+                                "Suche Hinweis Nr. ${step.orderIndex + 1}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
                             Button(onClick = { viewModel.showScanner() }, modifier = Modifier.fillMaxWidth()) {
                                 Text("QR-Code scannen")
                             }
