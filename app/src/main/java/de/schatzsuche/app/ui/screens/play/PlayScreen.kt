@@ -96,13 +96,13 @@ fun PlayScreen(
                         val step = uiState.currentStep
                         if (step != null) {
                             Text(step.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            ContentBlocksDisplay(step.instructionJson.toContentBlocks())
-                            Spacer(Modifier.height(8.dp))
                             Text(
                                 "Suche Hinweis Nr. ${step.orderIndex + 1}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.tertiary
                             )
+                            ContentBlocksDisplay(step.instructionJson.toContentBlocks())
+                            Spacer(Modifier.height(8.dp))
                             Button(onClick = { viewModel.showScanner() }, modifier = Modifier.fillMaxWidth()) {
                                 Text("QR-Code scannen")
                             }
