@@ -1,8 +1,6 @@
 package de.schatzsuche.app.ui.screens.admin
 
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +66,7 @@ import de.schatzsuche.app.data.model.toPostScanTasks
 import de.schatzsuche.app.data.model.toTaskResponses
 import de.schatzsuche.app.data.repository.SchatzsucheRepository
 import de.schatzsuche.app.ui.components.ContentBlocksDisplay
+import de.schatzsuche.app.ui.components.InstructionMediaActions
 import de.schatzsuche.app.ui.components.LoadingBox
 import de.schatzsuche.app.ui.components.SchatzAppBar
 import de.schatzsuche.app.ui.components.ThemeChip
@@ -339,16 +338,6 @@ fun StepEditScreen(
         }
     }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) stepVm.addMediaBlock(context, uri, de.schatzsuche.app.data.model.ContentBlockType.IMAGE)
-    }
-    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) stepVm.addMediaBlock(context, uri, de.schatzsuche.app.data.model.ContentBlockType.AUDIO)
-    }
-    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) stepVm.addMediaBlock(context, uri, de.schatzsuche.app.data.model.ContentBlockType.VIDEO)
-    }
-
     Scaffold(
         topBar = {
             SchatzAppBar("Schritt bearbeiten", onBack = saveAndBack)
@@ -420,11 +409,11 @@ fun StepEditScreen(
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { imagePicker.launch("image/*") }) { Text("Bild") }
-                OutlinedButton(onClick = { audioPicker.launch("audio/*") }) { Text("Audio") }
-                OutlinedButton(onClick = { videoPicker.launch("video/*") }) { Text("Video") }
-            }
+            Text("Medien hinzufügen", fontWeight = FontWeight.Bold)
+            InstructionMediaActions(
+                onPickUri = { uri, type -> stepVm.addMediaBlock(context, uri, type) },
+                onCapturedFile = { file, type -> stepVm.addCapturedMediaFile(file, type) }
+            )
 
             Text("QR-Code zuweisen", fontWeight = FontWeight.Bold)
             state.availableQrCodes.forEach { code ->

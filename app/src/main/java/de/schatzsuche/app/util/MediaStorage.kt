@@ -2,11 +2,15 @@ package de.schatzsuche.app.util
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 
 object MediaStorage {
+    fun fileProviderUri(context: Context, file: File): Uri =
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+
     fun copyToAppStorage(context: Context, sourceUri: Uri, subfolder: String, extension: String): String? {
         val dir = File(context.filesDir, subfolder).apply { mkdirs() }
         val dest = File(dir, "${UUID.randomUUID()}.$extension")

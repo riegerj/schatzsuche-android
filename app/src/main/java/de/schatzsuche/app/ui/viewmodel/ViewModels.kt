@@ -542,10 +542,21 @@ class StepEditViewModel(
             val path = withContext(Dispatchers.IO) {
                 MediaStorage.copyToAppStorage(context, uri, "instructions", mediaExtension(type))
             } ?: return@launch
-            val blocks = _state.value.mediaBlocks + RichContentBlock(type = type, mediaPath = path)
-            _state.value = _state.value.copy(mediaBlocks = blocks)
-            save()
+            addMediaPath(path, type)
         }
+    }
+
+    fun addCapturedMediaFile(file: File, type: ContentBlockType) {
+        viewModelScope.launch {
+            if (!file.exists() || file.length() == 0L) return@launch
+            addMediaPath(file.absolutePath, type)
+        }
+    }
+
+    private suspend fun addMediaPath(path: String, type: ContentBlockType) {
+        val blocks = _state.value.mediaBlocks + RichContentBlock(type = type, mediaPath = path)
+        _state.value = _state.value.copy(mediaBlocks = blocks)
+        save()
     }
 
     private fun mediaExtension(type: ContentBlockType): String = when (type) {
