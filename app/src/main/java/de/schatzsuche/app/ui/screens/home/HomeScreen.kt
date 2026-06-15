@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -73,10 +72,6 @@ fun HomeScreen(
             }
             Button(onClick = onAdmin, modifier = Modifier.padding(vertical = 8.dp)) {
                 Text("Admin-Modus")
-            }
-            Spacer(Modifier.height(24.dp))
-            OutlinedButton(onClick = onSetup) {
-                Text("QR-Karten & Erstkonfiguration")
             }
         }
     }

@@ -114,34 +114,48 @@ fun AdminHomeScreen(
             }
         }
     ) { padding ->
-        if (hunts.isEmpty()) {
-            Column(
-                Modifier.fillMaxSize().padding(padding).padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            OutlinedButton(
+                onClick = onQrPdf,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("Noch keine Schatzsuchen erstellt.")
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = { showCreateDialog = true }) {
-                    Text("Erste Schatzsuche anlegen")
-                }
+                Text("QR-Karten & Erstkonfiguration")
             }
-        } else {
-            LazyColumn(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(hunts) { hunt ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable { onEditHunt(hunt.id) },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(hunt.theme.emoji, style = MaterialTheme.typography.headlineMedium)
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(hunt.title, fontWeight = FontWeight.Bold)
-                                Text("${hunt.theme.displayName}", style = MaterialTheme.typography.bodySmall)
-                            }
-                            IconButton(onClick = { viewModel.deleteHunt(hunt.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Löschen")
+
+            if (hunts.isEmpty()) {
+                Column(
+                    Modifier.fillMaxSize().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("Noch keine Schatzsuchen erstellt.")
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { showCreateDialog = true }) {
+                        Text("Erste Schatzsuche anlegen")
+                    }
+                }
+            } else {
+                LazyColumn(
+                    Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(hunts) { hunt ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable { onEditHunt(hunt.id) },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(hunt.theme.emoji, style = MaterialTheme.typography.headlineMedium)
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(hunt.title, fontWeight = FontWeight.Bold)
+                                    Text("${hunt.theme.displayName}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                IconButton(onClick = { viewModel.deleteHunt(hunt.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Löschen")
+                                }
                             }
                         }
                     }
