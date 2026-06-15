@@ -1,5 +1,6 @@
 package de.schatzsuche.app.ui.screens.play
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,6 +72,14 @@ fun PlayScreen(
     LaunchedEffect(uiState.phase) {
         if (uiState.phase == PlayPhase.COMPLETED) {
             session?.id?.let { onFinished(it) }
+        }
+    }
+
+    BackHandler {
+        when {
+            showCancelDialog -> showCancelDialog = false
+            uiState.phase == PlayPhase.SCAN -> viewModel.dismissScanner()
+            else -> showCancelDialog = true
         }
     }
 
