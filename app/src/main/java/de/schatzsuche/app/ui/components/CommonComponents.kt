@@ -162,42 +162,56 @@ fun TreasureMap(
                 if (totalSteps <= 0) return@Canvas
                 val stepHeight = size.height / (totalSteps + 1)
                 val centerX = size.width / 2f
-                val points = (0 until totalSteps).map { i ->
+                val startPoint = Offset(centerX, stepHeight * 0.5f)
+                val stepPoints = (0 until totalSteps).map { i ->
                     val xOffset = if (i % 2 == 0) -60f else 60f
                     Offset(centerX + xOffset, stepHeight * (i + 1))
                 }
+                val endPoint = Offset(centerX, size.height - 20f)
 
                 if (completedSteps > 0) {
                     val path = Path()
-                    path.moveTo(centerX, stepHeight * 0.5f)
-                    for (i in 0 until completedSteps.coerceAtMost(points.size)) {
-                        path.lineTo(points[i].x, points[i].y)
+                    path.moveTo(startPoint.x, startPoint.y)
+                    for (i in 0 until completedSteps.coerceAtMost(stepPoints.size)) {
+                        path.lineTo(stepPoints[i].x, stepPoints[i].y)
+                    }
+                    if (completedSteps >= totalSteps) {
+                        path.lineTo(endPoint.x, endPoint.y)
                     }
                     drawPath(
                         path = path,
                         color = palette.mapPath,
                         style = Stroke(
                             width = 4f,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), if (animateLatest) dashPhase else 0f)
+                            pathEffect = PathEffect.dashPathEffect(
+                                floatArrayOf(12f, 8f),
+                                if (animateLatest) dashPhase else 0f
+                            )
                         )
                     )
                 }
 
-                points.forEachIndexed { index, point ->
+                drawCircle(
+                    color = palette.accent,
+                    radius = 14f,
+                    center = startPoint
+                )
+
+                stepPoints.forEachIndexed { index, point ->
                     val isCompleted = index < completedSteps
-                    val isCurrent = index == completedSteps
+                    val isCurrent = index == completedSteps && completedSteps < totalSteps
                     drawCircle(
                         color = when {
                             isCompleted -> palette.mapPath
                             isCurrent -> palette.accent
                             else -> palette.mapDot.copy(alpha = 0.5f)
                         },
-                        radius = if (isCurrent) 14f else 10f,
+                        radius = 10f,
                         center = point
                     )
                 }
 
-                drawCircle(color = Color(0xFFFFD700), radius = 16f, center = Offset(centerX, size.height - 20f))
+                drawCircle(color = Color(0xFFFFD700), radius = 16f, center = endPoint)
             }
             Text(
                 "Fortschritt: $completedSteps / $totalSteps",
