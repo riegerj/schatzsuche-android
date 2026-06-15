@@ -2,7 +2,10 @@ package de.schatzsuche.app.ui.components
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -43,6 +46,8 @@ import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -248,20 +253,103 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
                     }
                 }
                 ContentBlockType.AUDIO -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Audio-Anweisung verfügbar", style = MaterialTheme.typography.bodyMedium)
+                    block.mediaPath?.let { path ->
+                        InstructionAudioPlayer(path = path)
                     }
                 }
                 ContentBlockType.VIDEO -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Videocam, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Video-Anweisung verfügbar", style = MaterialTheme.typography.bodyMedium)
+                    block.mediaPath?.let { path ->
+                        InstructionVideoPlayer(path = path)
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun InstructionAudioPlayer(path: String) {
+    var isPlaying by remember(path) { mutableStateOf(false) }
+    val mediaPlayer = remember(path) { MediaPlayer() }
+
+    DisposableEffect(path) {
+        onDispose {
+            if (mediaPlayer.isPlaying) {
+                mediaPlayer.stop()
+            }
+            mediaPlayer.release()
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+            Spacer(Modifier.width(12.dp))
+            Text("Audio-Anweisung", modifier = Modifier.weight(1f))
+            IconButton(
+                onClick = {
+                    if (isPlaying) {
+                        mediaPlayer.pause()
+                        isPlaying = false
+                    } else {
+                        try {
+                            if (!mediaPlayer.isPlaying) {
+                                mediaPlayer.reset()
+                                mediaPlayer.setDataSource(path)
+                                mediaPlayer.prepare()
+                                mediaPlayer.setOnCompletionListener { isPlaying = false }
+                                mediaPlayer.start()
+                            }
+                            isPlaying = true
+                        } catch (_: Exception) {
+                            isPlaying = false
+                        }
+                    }
+                }
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Abspielen"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstructionVideoPlayer(path: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                Icon(Icons.Default.Videocam, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                Spacer(Modifier.width(8.dp))
+                Text("Video-Anweisung", fontWeight = FontWeight.SemiBold)
+            }
+            AndroidView(
+                factory = { ctx ->
+                    VideoView(ctx).apply {
+                        val controller = MediaController(ctx)
+                        controller.setMediaPlayer(this)
+                        setMediaController(controller)
+                        setVideoURI(Uri.fromFile(File(path)))
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
         }
     }
 }

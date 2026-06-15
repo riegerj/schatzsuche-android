@@ -3,6 +3,7 @@ package de.schatzsuche.app.ui.screens.admin
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,13 +19,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -47,11 +51,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import de.schatzsuche.app.data.model.HuntSessionStatus
 import de.schatzsuche.app.data.model.HuntTheme
 import de.schatzsuche.app.data.model.PostScanTaskType
@@ -70,6 +77,7 @@ import de.schatzsuche.app.ui.viewmodel.StepEditViewModel
 import de.schatzsuche.app.ui.viewmodel.StepEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -342,30 +350,56 @@ fun StepEditScreen(
             )
 
             Text("Anweisungen / Rätsel", fontWeight = FontWeight.Bold)
-            state.contentBlocks.forEach { block ->
-                when (block.type) {
-                    de.schatzsuche.app.data.model.ContentBlockType.TEXT -> {
-                        OutlinedTextField(
-                            value = block.text.orEmpty(),
-                            onValueChange = { stepVm.updateTextBlock(block.id, it) },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3
-                        )
-                    }
-                    else -> {
-                        Card(Modifier.fillMaxWidth()) {
-                            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(block.type.name, Modifier.weight(1f))
-                                IconButton(onClick = { stepVm.removeBlock(block.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Entfernen")
+            OutlinedTextField(
+                value = state.instructionText,
+                onValueChange = { stepVm.updateInstructionText(it) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                label = { Text("Anweisungstext") }
+            )
+
+            state.mediaBlocks.forEach { block ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(8.dp)) {
+                        when (block.type) {
+                            de.schatzsuche.app.data.model.ContentBlockType.IMAGE -> {
+                                block.mediaPath?.let { path ->
+                                    Image(
+                                        painter = rememberAsyncImagePainter(File(path)),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(120.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
                                 }
+                            }
+                            de.schatzsuche.app.data.model.ContentBlockType.AUDIO -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AudioFile, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Audio-Datei")
+                                }
+                            }
+                            de.schatzsuche.app.data.model.ContentBlockType.VIDEO -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Videocam, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Video-Datei")
+                                }
+                            }
+                            else -> Unit
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { stepVm.removeMediaBlock(block.id) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Entfernen")
                             }
                         }
                     }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { stepVm.addTextBlock() }) { Text("Text") }
                 OutlinedButton(onClick = { imagePicker.launch("image/*") }) { Text("Bild") }
                 OutlinedButton(onClick = { audioPicker.launch("audio/*") }) { Text("Audio") }
                 OutlinedButton(onClick = { videoPicker.launch("video/*") }) { Text("Video") }

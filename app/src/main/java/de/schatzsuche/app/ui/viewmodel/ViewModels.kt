@@ -452,7 +452,8 @@ class SummaryViewModelFactory(
 
 data class StepEditState(
     val step: HuntStepEntity? = null,
-    val contentBlocks: List<RichContentBlock> = emptyList(),
+    val instructionText: String = "",
+    val mediaBlocks: List<RichContentBlock> = emptyList(),
     val postScanTasks: List<PostScanTask> = emptyList(),
     val availableQrCodes: List<QrCodeEntity> = emptyList(),
     val selectedQrCode: QrCodeEntity? = null
@@ -473,14 +474,39 @@ class StepEditViewModel(
             val step = repository.huntStepDao.getById(stepId)
             val codes = repository.qrCodeDao.getAll()
             val selected = step?.let { repository.getQrCodeById(it.qrCodeId) }
+            val blocks = step?.instructionJson?.toContentBlocks() ?: emptyList()
+            val (instructionText, mediaBlocks) = splitInstructionBlocks(blocks)
             _state.value = StepEditState(
                 step = step,
-                contentBlocks = step?.instructionJson?.toContentBlocks() ?: emptyList(),
+                instructionText = instructionText,
+                mediaBlocks = mediaBlocks,
                 postScanTasks = step?.postScanTasksJson?.toPostScanTasks() ?: emptyList(),
                 availableQrCodes = codes,
                 selectedQrCode = selected
             )
         }
+    }
+
+    private fun splitInstructionBlocks(
+        blocks: List<RichContentBlock>
+    ): Pair<String, List<RichContentBlock>> {
+        val instructionText = blocks
+            .filter { it.type == ContentBlockType.TEXT }
+            .mapNotNull { it.text }
+            .filter { it.isNotBlank() }
+            .joinToString("\n\n")
+        val mediaBlocks = blocks.filter { it.type != ContentBlockType.TEXT }
+        return instructionText to mediaBlocks
+    }
+
+    private fun buildInstructionJson(text: String, media: List<RichContentBlock>): String {
+        val blocks = buildList {
+            if (text.isNotBlank()) {
+                add(RichContentBlock(type = ContentBlockType.TEXT, text = text))
+            }
+            addAll(media)
+        }
+        return blocks.toJson()
     }
 
     fun updateTitle(title: String) {
@@ -503,19 +529,12 @@ class StepEditViewModel(
         _state.value = _state.value.copy(step = step.copy(qrCodeId = code.codeId), selectedQrCode = code)
     }
 
-    fun addTextBlock() {
-        val blocks = _state.value.contentBlocks + RichContentBlock(type = ContentBlockType.TEXT, text = "")
-        _state.value = _state.value.copy(contentBlocks = blocks)
-    }
-
-    fun updateTextBlock(id: String, text: String) {
-        val blocks = _state.value.contentBlocks.map {
-            if (it.id == id) it.copy(text = text) else it
-        }
-        _state.value = _state.value.copy(contentBlocks = blocks)
+    fun updateInstructionText(text: String) {
+        _state.value = _state.value.copy(instructionText = text)
     }
 
     fun addMediaBlock(context: Context, uri: Uri, type: ContentBlockType) {
+        if (type == ContentBlockType.TEXT) return
         val ext = when (type) {
             ContentBlockType.IMAGE -> "jpg"
             ContentBlockType.AUDIO -> "m4a"
@@ -523,14 +542,14 @@ class StepEditViewModel(
             else -> "dat"
         }
         val path = MediaStorage.copyToAppStorage(context, uri, "instructions", ext)
-        val blocks = _state.value.contentBlocks + RichContentBlock(type = type, mediaPath = path)
-        _state.value = _state.value.copy(contentBlocks = blocks)
+        val blocks = _state.value.mediaBlocks + RichContentBlock(type = type, mediaPath = path)
+        _state.value = _state.value.copy(mediaBlocks = blocks)
     }
 
-    fun removeBlock(id: String) {
-        val block = _state.value.contentBlocks.find { it.id == id }
+    fun removeMediaBlock(id: String) {
+        val block = _state.value.mediaBlocks.find { it.id == id }
         MediaStorage.deleteIfExists(block?.mediaPath)
-        _state.value = _state.value.copy(contentBlocks = _state.value.contentBlocks.filter { it.id != id })
+        _state.value = _state.value.copy(mediaBlocks = _state.value.mediaBlocks.filter { it.id != id })
     }
 
     fun addPostScanTask(type: PostScanTaskType) {
@@ -563,7 +582,7 @@ class StepEditViewModel(
             val step = current.step ?: return@launch
             repository.saveStep(
                 step.copy(
-                    instructionJson = current.contentBlocks.toJson(),
+                    instructionJson = buildInstructionJson(current.instructionText, current.mediaBlocks),
                     postScanTasksJson = current.postScanTasks.toTasksJson()
                 )
             )
