@@ -48,6 +48,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ import de.schatzsuche.app.ui.viewmodel.SetupViewModel
 import de.schatzsuche.app.ui.viewmodel.StepEditViewModel
 import de.schatzsuche.app.ui.viewmodel.StepEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -328,6 +330,14 @@ fun StepEditScreen(
         factory = StepEditViewModelFactory(repository, huntId, stepId)
     )
     val state by stepVm.state.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    val saveAndBack: () -> Unit = {
+        scope.launch {
+            stepVm.save()
+            onBack()
+        }
+    }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) stepVm.addMediaBlock(context, uri, de.schatzsuche.app.data.model.ContentBlockType.IMAGE)
@@ -341,10 +351,7 @@ fun StepEditScreen(
 
     Scaffold(
         topBar = {
-            SchatzAppBar("Schritt bearbeiten", onBack = {
-                stepVm.save()
-                onBack()
-            })
+            SchatzAppBar("Schritt bearbeiten", onBack = saveAndBack)
         }
     ) { padding ->
         val step = state.step
@@ -499,7 +506,7 @@ fun StepEditScreen(
                 }
             }
 
-            Button(onClick = { stepVm.save(); onBack() }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = saveAndBack, modifier = Modifier.fillMaxWidth()) {
                 Text("Speichern")
             }
         }

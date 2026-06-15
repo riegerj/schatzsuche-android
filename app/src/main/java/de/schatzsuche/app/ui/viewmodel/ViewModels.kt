@@ -28,6 +28,7 @@ import de.schatzsuche.app.util.MediaStorage
 import de.schatzsuche.app.util.QrCodeUtil
 import de.schatzsuche.app.util.TaskValidator
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -372,6 +374,7 @@ class PlayViewModel(
         if (updated.status == HuntSessionStatus.COMPLETED) {
             _uiState.value = _uiState.value.copy(phase = PlayPhase.COMPLETED, completedCount = steps.size)
         } else {
+            steps = repository.getSteps(sess.huntId)
             val nextStep = steps.getOrNull(updated.currentStepIndex)
             val qr = nextStep?.let { repository.getQrCodeById(it.qrCodeId) }
             _uiState.value = PlayUiState(
@@ -535,15 +538,21 @@ class StepEditViewModel(
 
     fun addMediaBlock(context: Context, uri: Uri, type: ContentBlockType) {
         if (type == ContentBlockType.TEXT) return
-        val ext = when (type) {
-            ContentBlockType.IMAGE -> "jpg"
-            ContentBlockType.AUDIO -> "m4a"
-            ContentBlockType.VIDEO -> "mp4"
-            else -> "dat"
+        viewModelScope.launch {
+            val path = withContext(Dispatchers.IO) {
+                MediaStorage.copyToAppStorage(context, uri, "instructions", mediaExtension(type))
+            } ?: return@launch
+            val blocks = _state.value.mediaBlocks + RichContentBlock(type = type, mediaPath = path)
+            _state.value = _state.value.copy(mediaBlocks = blocks)
+            save()
         }
-        val path = MediaStorage.copyToAppStorage(context, uri, "instructions", ext)
-        val blocks = _state.value.mediaBlocks + RichContentBlock(type = type, mediaPath = path)
-        _state.value = _state.value.copy(mediaBlocks = blocks)
+    }
+
+    private fun mediaExtension(type: ContentBlockType): String = when (type) {
+        ContentBlockType.IMAGE -> "jpg"
+        ContentBlockType.AUDIO -> "m4a"
+        ContentBlockType.VIDEO -> "mp4"
+        else -> "dat"
     }
 
     fun removeMediaBlock(id: String) {
@@ -576,10 +585,10 @@ class StepEditViewModel(
         _state.value = _state.value.copy(postScanTasks = _state.value.postScanTasks.filter { it.id != id })
     }
 
-    fun save() {
-        viewModelScope.launch {
-            val current = _state.value
-            val step = current.step ?: return@launch
+    suspend fun save() {
+        val current = _state.value
+        val step = current.step ?: return
+        withContext(Dispatchers.IO) {
             repository.saveStep(
                 step.copy(
                     instructionJson = buildInstructionJson(current.instructionText, current.mediaBlocks),

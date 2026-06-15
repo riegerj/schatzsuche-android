@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import de.schatzsuche.app.data.model.ContentBlockType
@@ -232,6 +233,7 @@ fun TreasureMap(
 
 @Composable
 fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         blocks.forEach { block ->
             when (block.type) {
@@ -242,14 +244,22 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
                 }
                 ContentBlockType.IMAGE -> {
                     block.mediaPath?.let { path ->
-                        Image(
-                            painter = rememberAsyncImagePainter(File(path)),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.FillWidth
-                        )
+                        val file = File(path)
+                        if (file.exists()) {
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    ImageRequest.Builder(context)
+                                        .data(file)
+                                        .crossfade(true)
+                                        .build()
+                                ),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.FillWidth
+                            )
+                        }
                     }
                 }
                 ContentBlockType.AUDIO -> {
@@ -433,6 +443,7 @@ fun PostScanTasksForm(
                                         else -> "dat"
                                     }
                                     val path = MediaStorage.copyToAppStorage(context, uri, "responses", ext)
+                                        ?: return@rememberLauncherForActivityResult
                                     onResponse(task, TaskResponse(task.id, task.type, mediaPath = path))
                                 }
                             }
