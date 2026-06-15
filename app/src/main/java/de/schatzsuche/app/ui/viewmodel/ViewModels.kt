@@ -324,6 +324,7 @@ class PlayViewModel(
         } else if (step.isFinalStep) {
             _uiState.value = state.copy(
                 phase = PlayPhase.TREASURE,
+                completedCount = steps.size,
                 scanMessage = null,
                 scanMessageSuccess = null
             )
@@ -347,7 +348,7 @@ class PlayViewModel(
             return
         }
         if (step.isFinalStep) {
-            _uiState.value = state.copy(phase = PlayPhase.TREASURE)
+            _uiState.value = state.copy(phase = PlayPhase.TREASURE, completedCount = steps.size)
         } else {
             viewModelScope.launch {
                 advanceOrFinish(state.taskResponses.values.toList())
