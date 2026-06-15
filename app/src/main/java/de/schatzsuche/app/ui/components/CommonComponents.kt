@@ -98,6 +98,7 @@ import de.schatzsuche.app.ui.theme.toPalette
 import de.schatzsuche.app.util.MediaStorage
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -380,7 +381,9 @@ fun PostScanTasksForm(
 @Composable
 fun QrScannerView(
     onQrScanned: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    scanActive: Boolean = false,
+    fullScreen: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -401,7 +404,7 @@ fun QrScannerView(
     if (!hasPermission) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Kameraberechtigung benötigt")
+                Text("Kameraberechtigung benötigt", color = Color.White)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
                     Text("Berechtigung erteilen")
@@ -411,10 +414,26 @@ fun QrScannerView(
         return
     }
 
-    val scanned = remember { mutableStateOf(false) }
+    val scanActiveRef = remember { AtomicBoolean(false) }
+    LaunchedEffect(scanActive) {
+        scanActiveRef.set(scanActive)
+    }
+
+    val cameraModifier = if (fullScreen) {
+        modifier.fillMaxSize()
+    } else {
+        modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .border(2.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
+    }
+
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx)
+            val previewView = PreviewView(ctx).apply {
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
@@ -427,14 +446,15 @@ fun QrScannerView(
                 val scanner = BarcodeScanning.getClient()
                 analyzer.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
                     val mediaImage = imageProxy.image
-                    if (mediaImage != null && !scanned.value) {
+                    if (mediaImage != null && scanActiveRef.get()) {
                         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
                         scanner.process(image)
                             .addOnSuccessListener { barcodes ->
                                 barcodes.firstOrNull()?.rawValue?.let { value ->
-                                    if (!scanned.value) {
-                                        scanned.value = true
-                                        onQrScanned(value)
+                                    if (scanActiveRef.getAndSet(false)) {
+                                        ContextCompat.getMainExecutor(ctx).execute {
+                                            onQrScanned(value)
+                                        }
                                     }
                                 }
                             }
@@ -455,11 +475,7 @@ fun QrScannerView(
             }, ContextCompat.getMainExecutor(ctx))
             previewView
         },
-        modifier = modifier
-            .fillMaxWidth()
-            .height(300.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .border(2.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
+        modifier = cameraModifier
     )
 }
 

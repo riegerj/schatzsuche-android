@@ -27,6 +27,7 @@ import de.schatzsuche.app.data.repository.SchatzsucheRepository
 import de.schatzsuche.app.util.MediaStorage
 import de.schatzsuche.app.util.QrCodeUtil
 import de.schatzsuche.app.util.TaskValidator
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -191,7 +192,9 @@ data class PlayUiState(
     val currentStep: HuntStepEntity? = null,
     val qrCode: QrCodeEntity? = null,
     val taskResponses: Map<String, TaskResponse> = emptyMap(),
-    val scanError: String? = null,
+    val scanActive: Boolean = false,
+    val scanMessage: String? = null,
+    val scanMessageSuccess: Boolean? = null,
     val taskError: String? = null,
     val stepStartedAt: Long = System.currentTimeMillis(),
     val completedCount: Int = 0,
@@ -214,6 +217,7 @@ class PlayViewModel(
 
     private var steps: List<HuntStepEntity> = emptyList()
     private var huntTheme: HuntTheme = HuntTheme.CLASSIC
+    private var scanAttemptId = 0
 
     init {
         viewModelScope.launch { loadGame() }
@@ -239,34 +243,92 @@ class PlayViewModel(
     }
 
     fun showScanner() {
-        _uiState.value = _uiState.value.copy(phase = PlayPhase.SCAN, scanError = null)
+        _uiState.value = _uiState.value.copy(
+            phase = PlayPhase.SCAN,
+            scanActive = false,
+            scanMessage = null,
+            scanMessageSuccess = null
+        )
     }
 
-    fun showInstruction() {
-        _uiState.value = _uiState.value.copy(phase = PlayPhase.INSTRUCTION, scanError = null)
+    fun dismissScanner() {
+        scanAttemptId++
+        _uiState.value = _uiState.value.copy(
+            phase = PlayPhase.INSTRUCTION,
+            scanActive = false,
+            scanMessage = null,
+            scanMessageSuccess = null
+        )
+    }
+
+    fun triggerScan() {
+        val attemptId = ++scanAttemptId
+        _uiState.value = _uiState.value.copy(
+            scanActive = true,
+            scanMessage = null,
+            scanMessageSuccess = null
+        )
+        viewModelScope.launch {
+            delay(5000)
+            val state = _uiState.value
+            if (state.scanActive && scanAttemptId == attemptId) {
+                onNoCodeDetected()
+            }
+        }
+    }
+
+    fun onNoCodeDetected() {
+        scanAttemptId++
+        _uiState.value = _uiState.value.copy(
+            scanActive = false,
+            scanMessage = "Kein QR-Code erkannt. Bitte erneut versuchen.",
+            scanMessageSuccess = false
+        )
     }
 
     fun onQrScanned(rawPayload: String) {
         viewModelScope.launch {
             val state = _uiState.value
+            if (!state.scanActive) return@launch
+            scanAttemptId++
             val step = state.currentStep ?: return@launch
             val codeId = QrCodeUtil.parsePayload(rawPayload)
             if (codeId == null || codeId != step.qrCodeId) {
-                _uiState.value = state.copy(scanError = "Falscher QR-Code! Versuche es nochmal.")
+                _uiState.value = state.copy(
+                    scanActive = false,
+                    scanMessage = "Falscher QR-Code! Versuche es nochmal.",
+                    scanMessageSuccess = false
+                )
                 return@launch
             }
-            val tasks = step.postScanTasksJson.toPostScanTasks()
-            if (tasks.isNotEmpty()) {
-                _uiState.value = state.copy(
-                    phase = PlayPhase.POST_TASKS,
-                    scanError = null,
-                    taskResponses = emptyMap()
-                )
-            } else if (step.isFinalStep) {
-                _uiState.value = state.copy(phase = PlayPhase.TREASURE, scanError = null)
-            } else {
-                advanceOrFinish()
-            }
+            _uiState.value = state.copy(
+                scanActive = false,
+                scanMessage = "Richtiger QR-Code!",
+                scanMessageSuccess = true
+            )
+            delay(1200)
+            proceedAfterCorrectScan(step)
+        }
+    }
+
+    private suspend fun proceedAfterCorrectScan(step: HuntStepEntity) {
+        val state = _uiState.value
+        val tasks = step.postScanTasksJson.toPostScanTasks()
+        if (tasks.isNotEmpty()) {
+            _uiState.value = state.copy(
+                phase = PlayPhase.POST_TASKS,
+                scanMessage = null,
+                scanMessageSuccess = null,
+                taskResponses = emptyMap()
+            )
+        } else if (step.isFinalStep) {
+            _uiState.value = state.copy(
+                phase = PlayPhase.TREASURE,
+                scanMessage = null,
+                scanMessageSuccess = null
+            )
+        } else {
+            advanceOrFinish()
         }
     }
 
