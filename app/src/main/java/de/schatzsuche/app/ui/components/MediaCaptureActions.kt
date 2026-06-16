@@ -13,15 +13,24 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -324,13 +333,24 @@ private fun AudioRecordDialog(
         },
         title = { Text("Audio aufnehmen") },
         text = {
-            Text(
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isRecording) {
-                    "Aufnahme läuft… Tippe auf „Stoppen“, wenn du fertig bist."
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RecordingIndicator()
+                        Text(
+                            "Aufnahme läuft",
+                            color = Color(0xFFD32F2F),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text("Tippe auf „Stoppen“, wenn du fertig bist.")
                 } else {
-                    "Tippe auf „Aufnahme starten“, um eine Sprachnachricht aufzunehmen."
+                    Text("Tippe auf „Aufnahme starten“, um eine Sprachnachricht aufzunehmen.")
                 }
-            )
+            }
         },
         confirmButton = {
             Button(
@@ -378,5 +398,25 @@ private fun AudioRecordDialog(
                 TextButton(onClick = onDismiss) { Text("Abbrechen") }
             }
         }
+    )
+}
+
+@Composable
+private fun RecordingIndicator() {
+    val transition = rememberInfiniteTransition(label = "recording-indicator")
+    val pulse by transition.animateFloat(
+        initialValue = 0.75f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "recording-pulse"
+    )
+
+    Box(
+        modifier = Modifier
+            .size((12 * pulse).dp)
+            .background(Color(0xFFD32F2F), shape = RoundedCornerShape(50))
     )
 }
