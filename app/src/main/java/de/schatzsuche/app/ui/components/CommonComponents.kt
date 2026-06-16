@@ -23,6 +23,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,6 +39,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,6 +62,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -76,6 +79,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -113,6 +117,7 @@ import de.schatzsuche.app.data.model.PostScanTask
 import de.schatzsuche.app.data.model.PostScanTaskType
 import de.schatzsuche.app.data.model.RichContentBlock
 import de.schatzsuche.app.data.model.TaskResponse
+import de.schatzsuche.app.ui.theme.SchatzButtonDefaults
 import de.schatzsuche.app.ui.theme.toPalette
 import de.schatzsuche.app.util.ImageUtil
 import de.schatzsuche.app.util.MediaStorage
@@ -140,9 +145,94 @@ fun SchatzAppBar(
         actions = { actions() },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onSurface
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.primary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onSurface
         )
     )
+}
+
+@Composable
+fun SchatzTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = SchatzButtonDefaults.textButtonColors(),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        content = content
+    )
+}
+
+@Composable
+fun SchatzConfirmDialog(
+    onDismissRequest: () -> Unit,
+    title: String,
+    message: String,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    secondaryLabel: String,
+    onSecondary: () -> Unit,
+    secondaryDestructive: Boolean = false
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onPrimary,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                        colors = SchatzButtonDefaults.filledButtonColors()
+                    ) {
+                        Text(primaryLabel, style = MaterialTheme.typography.titleMedium)
+                    }
+                    OutlinedButton(
+                        onClick = onSecondary,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                        colors = if (secondaryDestructive) {
+                            ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            SchatzButtonDefaults.outlinedButtonColors()
+                        },
+                        border = if (secondaryDestructive) {
+                            BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+                        } else {
+                            ButtonDefaults.outlinedButtonBorder(enabled = true)
+                        }
+                    ) {
+                        Text(secondaryLabel, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

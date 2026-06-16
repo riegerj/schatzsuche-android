@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.schatzsuche.app.data.repository.SchatzsucheRepository
+import de.schatzsuche.app.ui.theme.SchatzButtonDefaults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -67,11 +69,21 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp, bottom = 48.dp)
             )
-            Button(onClick = onParticipant, modifier = Modifier.padding(vertical = 8.dp)) {
-                Text("Teilnehmer-Modus")
+            Button(
+                onClick = onParticipant,
+                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+                contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                colors = SchatzButtonDefaults.filledButtonColors()
+            ) {
+                Text("Teilnehmer-Modus", style = MaterialTheme.typography.titleMedium)
             }
-            Button(onClick = onAdmin, modifier = Modifier.padding(vertical = 8.dp)) {
-                Text("Admin-Modus")
+            Button(
+                onClick = onAdmin,
+                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+                contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                colors = SchatzButtonDefaults.filledButtonColors()
+            ) {
+                Text("Admin-Modus", style = MaterialTheme.typography.titleMedium)
             }
         }
     }

@@ -1,6 +1,7 @@
 package de.schatzsuche.app.ui.screens.play
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,7 +46,10 @@ import de.schatzsuche.app.ui.components.ContentBlocksDisplay
 import de.schatzsuche.app.ui.components.PostScanTasksForm
 import de.schatzsuche.app.ui.components.QrScannerView
 import de.schatzsuche.app.ui.components.SchatzAppBar
+import de.schatzsuche.app.ui.components.SchatzConfirmDialog
+import de.schatzsuche.app.ui.components.SchatzTextButton
 import de.schatzsuche.app.ui.components.TreasureMap
+import de.schatzsuche.app.ui.theme.SchatzButtonDefaults
 import de.schatzsuche.app.ui.theme.SchatzsucheTheme
 import de.schatzsuche.app.ui.viewmodel.PlayPhase
 import de.schatzsuche.app.ui.viewmodel.PlayViewModel
@@ -90,8 +93,8 @@ fun PlayScreen(
                     SchatzAppBar(
                         title = session?.participantName ?: "Schatzsuche",
                         actions = {
-                            TextButton(onClick = { showCancelDialog = true }) {
-                                Text("Abbrechen")
+                            SchatzTextButton(onClick = { showCancelDialog = true }) {
+                                Text("Abbrechen", style = MaterialTheme.typography.titleSmall)
                             }
                         }
                     )
@@ -133,9 +136,11 @@ fun PlayScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = { viewModel.showScanner() },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                                    colors = SchatzButtonDefaults.filledButtonColors()
                                 ) {
-                                    Text("QR-Code scannen")
+                                    Text("QR-Code scannen", style = MaterialTheme.typography.titleMedium)
                                 }
                             }
                         }
@@ -215,19 +220,18 @@ fun PlayScreen(
     }
 
     if (showCancelDialog) {
-        AlertDialog(
+        SchatzConfirmDialog(
             onDismissRequest = { showCancelDialog = false },
-            title = { Text("Schatzsuche abbrechen?") },
-            text = { Text("Der Fortschritt geht verloren.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showCancelDialog = false
-                    viewModel.cancelSession(onCancelled)
-                }) { Text("Abbrechen") }
+            title = "Schatzsuche abbrechen?",
+            message = "Wenn du jetzt abbrichst, geht dein bisheriger Fortschritt verloren.",
+            primaryLabel = "Weiterspielen",
+            onPrimary = { showCancelDialog = false },
+            secondaryLabel = "Abbrechen",
+            onSecondary = {
+                showCancelDialog = false
+                viewModel.cancelSession(onCancelled)
             },
-            dismissButton = {
-                TextButton(onClick = { showCancelDialog = false }) { Text("Weiterspielen") }
-            }
+            secondaryDestructive = true
         )
     }
 }
@@ -319,17 +323,24 @@ private fun QrScannerOverlay(
                 } else if (scanMessageSuccess != true) {
                     Button(
                         onClick = onTriggerScan,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                        colors = SchatzButtonDefaults.filledButtonColors()
                     ) {
-                        Text("Jetzt scannen")
+                        Text("Jetzt scannen", style = MaterialTheme.typography.titleMedium)
                     }
                 }
 
                 OutlinedButton(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(2.dp, Color.White.copy(alpha = 0.9f))
                 ) {
-                    Text("Zurück zu den Anweisungen", color = Color.White)
+                    Text("Zurück zu den Anweisungen", style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
