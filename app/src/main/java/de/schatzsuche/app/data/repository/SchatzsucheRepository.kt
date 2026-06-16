@@ -55,6 +55,36 @@ class SchatzsucheRepository(context: Context) {
         return PdfGenerator.generateQrCardsPdf(appContext, codes)
     }
 
+    suspend fun importQrCodesFromScans(
+        count: Int,
+        scans: List<Pair<Int, String>> // number -> rawPayload
+    ): File {
+        require(scans.size == count) { "Es müssen genau $count QR-Karten gescannt werden." }
+
+        val numbers = scans.map { it.first }
+        require(numbers.toSet().size == numbers.size) { "Doppelte Kartennummer gescannt." }
+        require(numbers.all { it in 1..count }) { "Ungültige Kartennummer gescannt." }
+
+        val codes = scans
+            .sortedBy { it.first }
+            .map { (number, rawPayload) ->
+                val codeId = QrCodeUtil.parsePayload(rawPayload)
+                    ?: throw IllegalArgumentException("Falscher QR-Code für #${number}. Bitte die passende gedruckte Karte scannen.")
+                QrCodeEntity(
+                    codeId = codeId,
+                    number = number,
+                    payload = rawPayload
+                )
+            }
+
+        val codeIds = codes.map { it.codeId }
+        require(codeIds.toSet().size == codeIds.size) { "Eine QR-Karte wurde mehrfach gescannt." }
+
+        qrCodeDao.deleteAll()
+        qrCodeDao.insertAll(codes)
+        return PdfGenerator.generateQrCardsPdf(appContext, codes)
+    }
+
     suspend fun generatePdfFromExisting(): File {
         val codes = qrCodeDao.getAll()
         return PdfGenerator.generateQrCardsPdf(appContext, codes)

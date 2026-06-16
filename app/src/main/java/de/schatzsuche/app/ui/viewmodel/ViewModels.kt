@@ -85,6 +85,21 @@ class SetupViewModel(private val repository: SchatzsucheRepository) : ViewModel(
         }
     }
 
+    fun importFromExistingQrScans(scans: List<Pair<Int, String>>) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val file = repository.importQrCodesFromScans(_qrCount.value, scans)
+                _pdfFile.value = file
+                _message.value = "PDF erstellt (importiert): ${file.name}"
+            } catch (e: Exception) {
+                _message.value = "Fehler: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun clearMessage() { _message.value = null }
 }
 
