@@ -14,12 +14,15 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,6 +49,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Check
@@ -81,6 +87,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -112,6 +119,7 @@ import de.schatzsuche.app.util.MediaStorage
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -556,7 +564,11 @@ private fun InstructionImageGalleryCard(
                 Spacer(Modifier.width(8.dp))
                 Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (imageCount > 1) {
-                    Text("$imageCount Bilder", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "$imageCount Bilder · Wischen",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
                 }
             }
             InstructionImageDisplay(path = imagePath)
@@ -621,6 +633,31 @@ private fun FullScreenImageGalleryOverlay(
             initialPage = startIndex.coerceIn(0, imagePaths.lastIndex),
             pageCount = { imagePaths.size }
         )
+        val multipleImages = imagePaths.size > 1
+        var showSwipeHint by remember { mutableStateOf(multipleImages) }
+        val hintTransition = rememberInfiniteTransition(label = "gallery-swipe-hint")
+        val chevronPulse by hintTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 6f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 900, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "chevron-pulse"
+        )
+
+        LaunchedEffect(pagerState.currentPage) {
+            if (pagerState.currentPage > 0) {
+                showSwipeHint = false
+            }
+        }
+        LaunchedEffect(multipleImages) {
+            if (multipleImages) {
+                delay(5000)
+                showSwipeHint = false
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -652,6 +689,55 @@ private fun FullScreenImageGalleryOverlay(
                     .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             )
+
+            if (multipleImages) {
+                if (pagerState.currentPage > 0) {
+                    GallerySwipeChevron(
+                        icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 4.dp)
+                            .offset(x = (-chevronPulse).dp)
+                    )
+                }
+                if (pagerState.currentPage < imagePaths.lastIndex) {
+                    GallerySwipeChevron(
+                        icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 4.dp)
+                            .offset(x = chevronPulse.dp)
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = showSwipeHint,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 72.dp)
+                ) {
+                    Text(
+                        text = "Wische für weitere Bilder",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+
+                ImageGalleryPageIndicator(
+                    pageCount = imagePaths.size,
+                    currentPage = pagerState.currentPage,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 28.dp)
+                )
+            }
+
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
@@ -661,6 +747,51 @@ private fun FullScreenImageGalleryOverlay(
             ) {
                 Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
             }
+        }
+    }
+}
+
+@Composable
+private fun GallerySwipeChevron(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
+@Composable
+private fun ImageGalleryPageIndicator(
+    pageCount: Int,
+    currentPage: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(pageCount) { index ->
+            val selected = index == currentPage
+            Box(
+                modifier = Modifier
+                    .size(if (selected) 10.dp else 8.dp)
+                    .alpha(if (selected) 1f else 0.45f)
+                    .background(Color.White, CircleShape)
+            )
         }
     }
 }
