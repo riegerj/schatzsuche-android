@@ -1,6 +1,5 @@
 package de.schatzsuche.app.ui.components
 
-import android.graphics.BitmapFactory
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
@@ -108,6 +107,7 @@ import de.schatzsuche.app.data.model.PostScanTaskType
 import de.schatzsuche.app.data.model.RichContentBlock
 import de.schatzsuche.app.data.model.TaskResponse
 import de.schatzsuche.app.ui.theme.toPalette
+import de.schatzsuche.app.util.ImageUtil
 import de.schatzsuche.app.util.MediaStorage
 import java.io.File
 import java.util.concurrent.Executors
@@ -342,20 +342,27 @@ fun ContentBlocksDisplay(
 @Composable
 fun InstructionImageDisplay(
     path: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fullscreen: Boolean = false
 ) {
     val file = remember(path) { File(path) }
     if (!file.exists()) return
 
-    val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
+    val bitmap = remember(path) { ImageUtil.decodeOrientedBitmap(path) }
+    val imageModifier = if (fullscreen) {
+        modifier
+    } else {
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp)
+            .clip(RoundedCornerShape(12.dp))
+    }
+
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = null,
-            modifier = modifier
-                .fillMaxWidth()
-                .heightIn(min = 120.dp)
-                .clip(RoundedCornerShape(12.dp)),
+            modifier = imageModifier,
             contentScale = ContentScale.Fit
         )
         return
@@ -366,13 +373,10 @@ fun InstructionImageDisplay(
             android.widget.ImageView(context).apply {
                 adjustViewBounds = true
                 scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-                setImageBitmap(BitmapFactory.decodeFile(path))
+                setImageBitmap(ImageUtil.decodeOrientedBitmap(path))
             }
         },
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 120.dp)
-            .clip(RoundedCornerShape(12.dp))
+        modifier = imageModifier
     )
 }
 
@@ -634,7 +638,8 @@ private fun FullScreenImageGalleryOverlay(
                 ) {
                     InstructionImageDisplay(
                         path = imagePaths[page],
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        fullscreen = true
                     )
                 }
             }
