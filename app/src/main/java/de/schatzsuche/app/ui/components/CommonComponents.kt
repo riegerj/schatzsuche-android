@@ -1,5 +1,6 @@
 package de.schatzsuche.app.ui.components
 
+import android.graphics.BitmapFactory
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -80,6 +82,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -90,8 +93,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import de.schatzsuche.app.data.model.ContentBlockType
@@ -233,7 +234,6 @@ fun TreasureMap(
 
 @Composable
 fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         blocks.forEach { block ->
             when (block.type) {
@@ -244,22 +244,7 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
                 }
                 ContentBlockType.IMAGE -> {
                     block.mediaPath?.let { path ->
-                        val file = File(path)
-                        if (file.exists()) {
-                            Image(
-                                painter = rememberAsyncImagePainter(
-                                    ImageRequest.Builder(context)
-                                        .data(file)
-                                        .crossfade(true)
-                                        .build()
-                                ),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.FillWidth
-                            )
-                        }
+                        InstructionImageDisplay(path)
                     }
                 }
                 ContentBlockType.AUDIO -> {
@@ -275,6 +260,43 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
             }
         }
     }
+}
+
+@Composable
+fun InstructionImageDisplay(
+    path: String,
+    modifier: Modifier = Modifier
+) {
+    val file = remember(path) { File(path) }
+    if (!file.exists()) return
+
+    val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Fit
+        )
+        return
+    }
+
+    AndroidView(
+        factory = { context ->
+            android.widget.ImageView(context).apply {
+                adjustViewBounds = true
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                setImageBitmap(BitmapFactory.decodeFile(path))
+            }
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp)
+            .clip(RoundedCornerShape(12.dp))
+    )
 }
 
 @Composable
@@ -436,27 +458,22 @@ fun PostScanTasksForm(
                                 ActivityResultContracts.GetContent()
                             ) { uri ->
                                 if (uri != null) {
-                                    val ext = when (task.type) {
-                                        PostScanTaskType.PHOTO -> "jpg"
-                                        PostScanTaskType.VIDEO -> "mp4"
-                                        PostScanTaskType.AUDIO -> "m4a"
-                                        else -> "dat"
+                                    val blockType = when (task.type) {
+                                        PostScanTaskType.PHOTO -> ContentBlockType.IMAGE
+                                        PostScanTaskType.VIDEO -> ContentBlockType.VIDEO
+                                        PostScanTaskType.AUDIO -> ContentBlockType.AUDIO
+                                        else -> return@rememberLauncherForActivityResult
                                     }
-                                    val path = MediaStorage.copyToAppStorage(context, uri, "responses", ext)
+                                    val path = MediaStorage.copyToAppStorage(context, uri, "responses", blockType)
                                         ?: return@rememberLauncherForActivityResult
                                     onResponse(task, TaskResponse(task.id, task.type, mediaPath = path))
                                 }
                             }
                             val mediaPath = responses[task.id]?.mediaPath
                             if (mediaPath != null && task.type == PostScanTaskType.PHOTO) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(File(mediaPath)),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(160.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
+                                InstructionImageDisplay(
+                                    path = mediaPath,
+                                    modifier = Modifier.height(160.dp)
                                 )
                                 Spacer(Modifier.height(8.dp))
                             } else if (mediaPath != null) {

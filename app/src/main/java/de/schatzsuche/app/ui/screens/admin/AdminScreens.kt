@@ -1,7 +1,6 @@
 package de.schatzsuche.app.ui.screens.admin
 
 import android.content.Intent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -50,14 +48,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.rememberAsyncImagePainter
 import de.schatzsuche.app.data.model.HuntSessionStatus
 import de.schatzsuche.app.data.model.HuntTheme
 import de.schatzsuche.app.data.model.PostScanTaskType
@@ -66,6 +61,7 @@ import de.schatzsuche.app.data.model.toPostScanTasks
 import de.schatzsuche.app.data.model.toTaskResponses
 import de.schatzsuche.app.data.repository.SchatzsucheRepository
 import de.schatzsuche.app.ui.components.ContentBlocksDisplay
+import de.schatzsuche.app.ui.components.InstructionImageDisplay
 import de.schatzsuche.app.ui.components.InstructionMediaActions
 import de.schatzsuche.app.ui.components.LoadingBox
 import de.schatzsuche.app.ui.components.SchatzAppBar
@@ -78,7 +74,6 @@ import de.schatzsuche.app.ui.viewmodel.StepEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -374,14 +369,9 @@ fun StepEditScreen(
                         when (block.type) {
                             de.schatzsuche.app.data.model.ContentBlockType.IMAGE -> {
                                 block.mediaPath?.let { path ->
-                                    Image(
-                                        painter = rememberAsyncImagePainter(File(path)),
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(120.dp)
-                                            .clip(RoundedCornerShape(8.dp)),
-                                        contentScale = ContentScale.Crop
+                                    InstructionImageDisplay(
+                                        path = path,
+                                        modifier = Modifier.height(120.dp)
                                     )
                                 }
                             }

@@ -230,7 +230,9 @@ class PlayViewModel(
         val hunt = repository.treasureHuntDao.getById(sess.huntId) ?: return
         steps = repository.getSteps(sess.huntId)
         huntTheme = hunt.theme
-        val step = steps.getOrNull(sess.currentStepIndex)
+        val step = steps.getOrNull(sess.currentStepIndex)?.let { cached ->
+            repository.huntStepDao.getById(cached.id) ?: cached
+        }
         val qr = step?.let { repository.getQrCodeById(it.qrCodeId) }
         _uiState.value = PlayUiState(
             phase = if (sess.status == HuntSessionStatus.COMPLETED) PlayPhase.COMPLETED
@@ -375,7 +377,9 @@ class PlayViewModel(
             _uiState.value = _uiState.value.copy(phase = PlayPhase.COMPLETED, completedCount = steps.size)
         } else {
             steps = repository.getSteps(sess.huntId)
-            val nextStep = steps.getOrNull(updated.currentStepIndex)
+            val nextStep = steps.getOrNull(updated.currentStepIndex)?.let { cached ->
+                repository.huntStepDao.getById(cached.id) ?: cached
+            }
             val qr = nextStep?.let { repository.getQrCodeById(it.qrCodeId) }
             _uiState.value = PlayUiState(
                 phase = PlayPhase.INSTRUCTION,
@@ -540,7 +544,7 @@ class StepEditViewModel(
         if (type == ContentBlockType.TEXT) return
         viewModelScope.launch {
             val path = withContext(Dispatchers.IO) {
-                MediaStorage.copyToAppStorage(context, uri, "instructions", mediaExtension(type))
+                MediaStorage.copyToAppStorage(context, uri, "instructions", type)
             } ?: return@launch
             addMediaPath(path, type)
         }
@@ -557,13 +561,6 @@ class StepEditViewModel(
         val blocks = _state.value.mediaBlocks + RichContentBlock(type = type, mediaPath = path)
         _state.value = _state.value.copy(mediaBlocks = blocks)
         save()
-    }
-
-    private fun mediaExtension(type: ContentBlockType): String = when (type) {
-        ContentBlockType.IMAGE -> "jpg"
-        ContentBlockType.AUDIO -> "m4a"
-        ContentBlockType.VIDEO -> "mp4"
-        else -> "dat"
     }
 
     fun removeMediaBlock(id: String) {
