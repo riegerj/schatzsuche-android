@@ -88,6 +88,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -299,7 +300,7 @@ fun ContentBlocksDisplay(
                 }
                 ContentBlockType.AUDIO -> {
                     block.mediaPath?.let { path ->
-                        InstructionAudioPlayer(path = path)
+                        InstructionAudioPlayer(path = path, immersiveMedia = immersiveMedia)
                     }
                 }
                 ContentBlockType.VIDEO -> {
@@ -365,7 +366,7 @@ fun InstructionImageDisplay(
 }
 
 @Composable
-private fun InstructionAudioPlayer(path: String) {
+private fun InstructionAudioPlayer(path: String, immersiveMedia: Boolean) {
     var isPlaying by remember(path) { mutableStateOf(false) }
     val mediaPlayer = remember(path) { MediaPlayer() }
 
@@ -391,6 +392,12 @@ private fun InstructionAudioPlayer(path: String) {
             Icon(Icons.Default.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
             Spacer(Modifier.width(12.dp))
             Text("Hinweis anhören", modifier = Modifier.weight(1f))
+            if (immersiveMedia) {
+                AudioPlayingIndicator(
+                    isPlaying = isPlaying,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
             IconButton(
                 onClick = {
                     if (isPlaying) {
@@ -417,6 +424,44 @@ private fun InstructionAudioPlayer(path: String) {
                     contentDescription = if (isPlaying) "Pause" else "Abspielen"
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AudioPlayingIndicator(isPlaying: Boolean, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "audio-indicator")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 650, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "audio-phase"
+    )
+    val activeColor = MaterialTheme.colorScheme.tertiary
+    val inactiveColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+    val progress = if (isPlaying) phase else 0.15f
+
+    Canvas(modifier = modifier.size(width = 18.dp, height = 14.dp)) {
+        val spacing = size.width / 4f
+        val minHeight = size.height * 0.25f
+        val maxHeight = size.height * 0.95f
+        val h1 = minHeight + (maxHeight - minHeight) * (0.45f + 0.55f * progress)
+        val h2 = minHeight + (maxHeight - minHeight) * (0.65f + 0.35f * (1f - progress))
+        val h3 = minHeight + (maxHeight - minHeight) * (0.35f + 0.65f * progress)
+
+        val heights = listOf(h1, h2, h3)
+        heights.forEachIndexed { index, barHeight ->
+            val x = spacing * (index + 1)
+            drawLine(
+                color = if (isPlaying) activeColor else inactiveColor,
+                start = Offset(x, size.height),
+                end = Offset(x, size.height - barHeight),
+                strokeWidth = 2.8f,
+                cap = StrokeCap.Round
+            )
         }
     }
 }
