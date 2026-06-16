@@ -96,6 +96,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
@@ -551,36 +553,41 @@ private fun InstructionImageGalleryCard(
 
 @Composable
 private fun FullScreenVideoOverlay(path: String, onDismiss: () -> Unit) {
-    BackHandler(onBack = onDismiss)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        AndroidView(
-            factory = { ctx ->
-                VideoView(ctx).apply {
-                    val controller = MediaController(ctx)
-                    controller.setMediaPlayer(this)
-                    setMediaController(controller)
-                    setVideoURI(Uri.fromFile(File(path)))
-                    setOnPreparedListener { mp ->
-                        mp.isLooping = false
-                        start()
-                    }
-                    setOnCompletionListener { onDismiss() }
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-        IconButton(
-            onClick = onDismiss,
+        BackHandler(onBack = onDismiss)
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .fillMaxSize()
+                .background(Color.Black)
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+            AndroidView(
+                factory = { ctx ->
+                    VideoView(ctx).apply {
+                        val controller = MediaController(ctx)
+                        controller.setMediaPlayer(this)
+                        setMediaController(controller)
+                        setVideoURI(Uri.fromFile(File(path)))
+                        setOnPreparedListener { mp ->
+                            mp.isLooping = false
+                            start()
+                        }
+                        setOnCompletionListener { onDismiss() }
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+            }
         }
     }
 }
@@ -592,49 +599,54 @@ private fun FullScreenImageGalleryOverlay(
     onDismiss: () -> Unit
 ) {
     if (imagePaths.isEmpty()) return
-    BackHandler(onBack = onDismiss)
-    val pagerState = rememberPagerState(
-        initialPage = startIndex.coerceIn(0, imagePaths.lastIndex),
-        pageCount = { imagePaths.size }
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                InstructionImageDisplay(
-                    path = imagePaths[page],
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-        Text(
-            text = "${pagerState.currentPage + 1} / ${imagePaths.size}",
-            color = Color.White,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 20.dp)
-                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+        BackHandler(onBack = onDismiss)
+        val pagerState = rememberPagerState(
+            initialPage = startIndex.coerceIn(0, imagePaths.lastIndex),
+            pageCount = { imagePaths.size }
         )
-        IconButton(
-            onClick = onDismiss,
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .fillMaxSize()
+                .background(Color.Black)
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    InstructionImageDisplay(
+                        path = imagePaths[page],
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+            Text(
+                text = "${pagerState.currentPage + 1} / ${imagePaths.size}",
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 20.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+            }
         }
     }
 }
