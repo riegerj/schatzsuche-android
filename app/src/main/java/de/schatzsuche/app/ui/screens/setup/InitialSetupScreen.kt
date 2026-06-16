@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import de.schatzsuche.app.ui.components.QrScannerView
@@ -282,7 +283,12 @@ fun InitialSetupScreen(
 
                         localScanMessage?.let { msg ->
                             val c = if (localScanSuccess == true) Color(0xFF2E7D32) else Color(0xFFC62828)
-                            Text(msg, color = c, textAlign = Alignment.CenterHorizontally)
+                            Text(
+                                text = msg,
+                                color = c,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
 
                         Button(
