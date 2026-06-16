@@ -4,15 +4,32 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -23,10 +40,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import de.schatzsuche.app.data.model.ContentBlockType
 import de.schatzsuche.app.util.MediaStorage
@@ -39,8 +62,8 @@ fun InstructionMediaActions(
     onCapturedFile: (File, ContentBlockType) -> Unit
 ) {
     val context = LocalContext.current
-    var pendingPhotoFile by remember { mutableStateOf<File?>(null) }
     var pendingVideoFile by remember { mutableStateOf<File?>(null) }
+    var showPhotoCapture by remember { mutableStateOf(false) }
     var showAudioDialog by remember { mutableStateOf(false) }
     var pendingPermissionAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -75,13 +98,6 @@ fun InstructionMediaActions(
         if (uri != null) onPickUri(uri, ContentBlockType.VIDEO)
     }
 
-    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success) {
-            pendingPhotoFile?.let { onCapturedFile(it, ContentBlockType.IMAGE) }
-        }
-        pendingPhotoFile = null
-    }
-
     val captureVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
         if (success) {
             pendingVideoFile?.let { onCapturedFile(it, ContentBlockType.VIDEO) }
@@ -91,9 +107,7 @@ fun InstructionMediaActions(
 
     fun launchPhotoCapture() {
         withPermissions(Manifest.permission.CAMERA) {
-            val file = MediaStorage.createMediaFile(context, "instructions", "jpg")
-            pendingPhotoFile = file
-            takePictureLauncher.launch(MediaStorage.fileProviderUri(context, file))
+            showPhotoCapture = true
         }
     }
 
@@ -130,6 +144,16 @@ fun InstructionMediaActions(
         )
     }
 
+    if (showPhotoCapture) {
+        PhotoCaptureDialog(
+            onDismiss = { showPhotoCapture = false },
+            onPhotoCaptured = { file ->
+                onCapturedFile(file, ContentBlockType.IMAGE)
+                showPhotoCapture = false
+            }
+        )
+    }
+
     if (showAudioDialog) {
         AudioRecordDialog(
             onDismiss = { showAudioDialog = false },
@@ -157,6 +181,119 @@ private fun MediaActionRow(
         ) {
             OutlinedButton(onClick = onPick) { Text("Datei wählen") }
             OutlinedButton(onClick = onCapture) { Text(captureLabel) }
+        }
+    }
+}
+
+@Composable
+private fun PhotoCaptureDialog(
+    onDismiss: () -> Unit,
+    onPhotoCaptured: (File) -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val outputFile = remember { MediaStorage.createMediaFile(context, "instructions", "jpg") }
+    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    var isCapturing by remember { mutableStateOf(false) }
+    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraProvider?.unbindAll()
+        }
+    }
+
+    fun capturePhoto() {
+        val capture = imageCapture ?: return
+        if (isCapturing) return
+        isCapturing = true
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(outputFile).build()
+        capture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    isCapturing = false
+                    onPhotoCaptured(outputFile)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    isCapturing = false
+                }
+            }
+        )
+    }
+
+    Dialog(
+        onDismissRequest = { if (!isCapturing) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        BackHandler(enabled = !isCapturing, onBack = onDismiss)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                    }
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                    cameraProviderFuture.addListener({
+                        val provider = cameraProviderFuture.get()
+                        cameraProvider = provider
+                        val preview = Preview.Builder().build().also {
+                            it.surfaceProvider = previewView.surfaceProvider
+                        }
+                        val capture = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .build()
+                        imageCapture = capture
+                        try {
+                            provider.unbindAll()
+                            provider.bindToLifecycle(
+                                lifecycleOwner,
+                                CameraSelector.DEFAULT_BACK_CAMERA,
+                                preview,
+                                capture
+                            )
+                        } catch (_: Exception) {
+                        }
+                    }, ContextCompat.getMainExecutor(ctx))
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                enabled = !isCapturing,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+            }
+
+            if (isCapturing) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                Button(
+                    onClick = { capturePhoto() },
+                    enabled = imageCapture != null,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(24.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text("Foto aufnehmen")
+                }
+            }
         }
     }
 }
