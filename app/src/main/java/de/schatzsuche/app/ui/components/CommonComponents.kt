@@ -7,6 +7,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.widget.MediaController
 import android.widget.VideoView
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -37,6 +38,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -234,7 +237,33 @@ fun TreasureMap(
 
 @Composable
 fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Modifier) {
+    ContentBlocksDisplay(
+        blocks = blocks,
+        modifier = modifier,
+        immersiveMedia = false
+    )
+}
+
+@Composable
+fun ContentBlocksDisplay(
+    blocks: List<RichContentBlock>,
+    modifier: Modifier = Modifier,
+    immersiveMedia: Boolean = false
+) {
+    val imagePaths = blocks.mapNotNull { block ->
+        if (block.type == ContentBlockType.IMAGE) block.mediaPath else null
+    }
+    var fullScreenVideoPath by remember { mutableStateOf<String?>(null) }
+    var fullScreenImageIndex by remember { mutableStateOf<Int?>(null) }
+
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (immersiveMedia && imagePaths.isNotEmpty()) {
+            InstructionImageGalleryCard(
+                imagePath = imagePaths.first(),
+                imageCount = imagePaths.size,
+                onOpen = { fullScreenImageIndex = 0 }
+            )
+        }
         blocks.forEach { block ->
             when (block.type) {
                 ContentBlockType.TEXT -> {
@@ -243,25 +272,27 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
                     }
                 }
                 ContentBlockType.IMAGE -> {
-                    block.mediaPath?.let { path ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Column(Modifier.padding(8.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Image,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold)
+                    if (!immersiveMedia) {
+                        block.mediaPath?.let { path ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Column(Modifier.padding(8.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Image,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.tertiary
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold)
+                                    }
+                                    InstructionImageDisplay(path)
                                 }
-                                InstructionImageDisplay(path)
                             }
                         }
                     }
@@ -273,11 +304,26 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
                 }
                 ContentBlockType.VIDEO -> {
                     block.mediaPath?.let { path ->
-                        InstructionVideoPlayer(path = path)
+                        InstructionVideoPlayer(
+                            path = path,
+                            immersiveMedia = immersiveMedia,
+                            onOpenFullScreen = { fullScreenVideoPath = path }
+                        )
                     }
                 }
             }
         }
+    }
+
+    fullScreenVideoPath?.let { path ->
+        FullScreenVideoOverlay(path = path, onDismiss = { fullScreenVideoPath = null })
+    }
+    fullScreenImageIndex?.let { startIndex ->
+        FullScreenImageGalleryOverlay(
+            imagePaths = imagePaths,
+            startIndex = startIndex,
+            onDismiss = { fullScreenImageIndex = null }
+        )
     }
 }
 
@@ -376,7 +422,31 @@ private fun InstructionAudioPlayer(path: String) {
 }
 
 @Composable
-private fun InstructionVideoPlayer(path: String) {
+private fun InstructionVideoPlayer(
+    path: String,
+    immersiveMedia: Boolean,
+    onOpenFullScreen: () -> Unit
+) {
+    if (immersiveMedia) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenFullScreen() },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Videocam, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                Spacer(Modifier.width(8.dp))
+                Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+            }
+        }
+        return
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -401,6 +471,125 @@ private fun InstructionVideoPlayer(path: String) {
                     .height(220.dp)
                     .clip(RoundedCornerShape(8.dp))
             )
+        }
+    }
+}
+
+@Composable
+private fun InstructionImageGalleryCard(
+    imagePath: String,
+    imageCount: Int,
+    onOpen: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpen() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                Spacer(Modifier.width(8.dp))
+                Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (imageCount > 1) {
+                    Text("$imageCount Bilder", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            InstructionImageDisplay(path = imagePath)
+        }
+    }
+}
+
+@Composable
+private fun FullScreenVideoOverlay(path: String, onDismiss: () -> Unit) {
+    BackHandler(onBack = onDismiss)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                VideoView(ctx).apply {
+                    val controller = MediaController(ctx)
+                    controller.setMediaPlayer(this)
+                    setMediaController(controller)
+                    setVideoURI(Uri.fromFile(File(path)))
+                    setOnPreparedListener { mp ->
+                        mp.isLooping = false
+                        start()
+                    }
+                    setOnCompletionListener { onDismiss() }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+        ) {
+            Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun FullScreenImageGalleryOverlay(
+    imagePaths: List<String>,
+    startIndex: Int,
+    onDismiss: () -> Unit
+) {
+    if (imagePaths.isEmpty()) return
+    BackHandler(onBack = onDismiss)
+    val pagerState = rememberPagerState(
+        initialPage = startIndex.coerceIn(0, imagePaths.lastIndex),
+        pageCount = { imagePaths.size }
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                InstructionImageDisplay(
+                    path = imagePaths[page],
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        Text(
+            text = "${pagerState.currentPage + 1} / ${imagePaths.size}",
+            color = Color.White,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 20.dp)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+        ) {
+            Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
         }
     }
 }

@@ -126,7 +126,10 @@ fun PlayScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
-                                ContentBlocksDisplay(step.instructionJson.toContentBlocks())
+                                ContentBlocksDisplay(
+                                    blocks = step.instructionJson.toContentBlocks(),
+                                    immersiveMedia = true
+                                )
                                 Spacer(Modifier.height(8.dp))
                                 Button(
                                     onClick = { viewModel.showScanner() },
