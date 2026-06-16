@@ -244,7 +244,26 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
                 }
                 ContentBlockType.IMAGE -> {
                     block.mediaPath?.let { path ->
-                        InstructionImageDisplay(path)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(Modifier.padding(8.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Image,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold)
+                                }
+                                InstructionImageDisplay(path)
+                            }
+                        }
                     }
                 }
                 ContentBlockType.AUDIO -> {
@@ -325,7 +344,7 @@ private fun InstructionAudioPlayer(path: String) {
         ) {
             Icon(Icons.Default.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
             Spacer(Modifier.width(12.dp))
-            Text("Audio-Anweisung", modifier = Modifier.weight(1f))
+            Text("Hinweis anhören", modifier = Modifier.weight(1f))
             IconButton(
                 onClick = {
                     if (isPlaying) {
@@ -366,7 +385,7 @@ private fun InstructionVideoPlayer(path: String) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
                 Icon(Icons.Default.Videocam, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
                 Spacer(Modifier.width(8.dp))
-                Text("Video-Anweisung", fontWeight = FontWeight.SemiBold)
+                Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold)
             }
             AndroidView(
                 factory = { ctx ->
