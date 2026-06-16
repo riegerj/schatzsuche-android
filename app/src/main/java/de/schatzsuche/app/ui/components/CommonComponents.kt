@@ -239,11 +239,16 @@ fun TreasureMap(
 }
 
 @Composable
-fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Modifier) {
+fun ContentBlocksDisplay(
+    blocks: List<RichContentBlock>,
+    modifier: Modifier = Modifier,
+    showMedia: Boolean = true
+) {
     ContentBlocksDisplay(
         blocks = blocks,
         modifier = modifier,
-        immersiveMedia = false
+        immersiveMedia = false,
+        showMedia = showMedia
     )
 }
 
@@ -251,7 +256,8 @@ fun ContentBlocksDisplay(blocks: List<RichContentBlock>, modifier: Modifier = Mo
 fun ContentBlocksDisplay(
     blocks: List<RichContentBlock>,
     modifier: Modifier = Modifier,
-    immersiveMedia: Boolean = false
+    immersiveMedia: Boolean = false,
+    showMedia: Boolean = true
 ) {
     val imagePaths = blocks.mapNotNull { block ->
         if (block.type == ContentBlockType.IMAGE) block.mediaPath else null
@@ -260,7 +266,7 @@ fun ContentBlocksDisplay(
     var fullScreenImageIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (immersiveMedia && imagePaths.isNotEmpty()) {
+        if (showMedia && immersiveMedia && imagePaths.isNotEmpty()) {
             InstructionImageGalleryCard(
                 imagePath = imagePaths.first(),
                 imageCount = imagePaths.size,
@@ -275,6 +281,7 @@ fun ContentBlocksDisplay(
                     }
                 }
                 ContentBlockType.IMAGE -> {
+                    if (!showMedia) return@forEach
                     if (!immersiveMedia) {
                         block.mediaPath?.let { path ->
                             Card(
@@ -301,11 +308,13 @@ fun ContentBlocksDisplay(
                     }
                 }
                 ContentBlockType.AUDIO -> {
+                    if (!showMedia) return@forEach
                     block.mediaPath?.let { path ->
                         InstructionAudioPlayer(path = path, immersiveMedia = immersiveMedia)
                     }
                 }
                 ContentBlockType.VIDEO -> {
+                    if (!showMedia) return@forEach
                     block.mediaPath?.let { path ->
                         InstructionVideoPlayer(
                             path = path,

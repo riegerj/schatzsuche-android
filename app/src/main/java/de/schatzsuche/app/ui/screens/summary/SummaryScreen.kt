@@ -1,6 +1,5 @@
 package de.schatzsuche.app.ui.screens.summary
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -25,12 +23,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
 import de.schatzsuche.app.data.model.PostScanTaskType
 import de.schatzsuche.app.data.model.toContentBlocks
 import de.schatzsuche.app.data.model.toTaskResponses
@@ -40,7 +35,6 @@ import de.schatzsuche.app.ui.components.SchatzAppBar
 import de.schatzsuche.app.ui.components.TreasureMap
 import de.schatzsuche.app.ui.theme.SchatzsucheTheme
 import de.schatzsuche.app.ui.viewmodel.SummaryViewModel
-import java.io.File
 
 @Composable
 fun SummaryScreen(viewModel: SummaryViewModel, onHome: () -> Unit) {
@@ -123,7 +117,10 @@ fun SummaryScreen(viewModel: SummaryViewModel, onHome: () -> Unit) {
                             )
                             step?.let {
                                 Spacer(Modifier.height(8.dp))
-                                ContentBlocksDisplay(it.instructionJson.toContentBlocks())
+                                ContentBlocksDisplay(
+                                    blocks = it.instructionJson.toContentBlocks(),
+                                    showMedia = false
+                                )
                             }
 
                             val responses = completion.taskResponsesJson.toTaskResponses()
@@ -139,23 +136,9 @@ fun SummaryScreen(viewModel: SummaryViewModel, onHome: () -> Unit) {
                                         PostScanTaskType.MULTIPLE_CHOICE -> {
                                             Text(response.selectedOptions.joinToString(", "))
                                         }
-                                        PostScanTaskType.PHOTO -> {
-                                            response.mediaPath?.let { path ->
-                                                Image(
-                                                    painter = rememberAsyncImagePainter(File(path)),
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(180.dp)
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            }
-                                        }
+                                        PostScanTaskType.PHOTO,
                                         PostScanTaskType.VIDEO,
-                                        PostScanTaskType.AUDIO -> {
-                                            Text("📎 ${response.type.name} gespeichert")
-                                        }
+                                        PostScanTaskType.AUDIO -> Unit
                                     }
                                 }
                             }
