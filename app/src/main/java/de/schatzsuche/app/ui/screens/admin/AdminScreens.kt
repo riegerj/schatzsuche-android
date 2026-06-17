@@ -66,6 +66,7 @@ import de.schatzsuche.app.ui.components.InstructionImageDisplay
 import de.schatzsuche.app.ui.components.InstructionMediaActions
 import de.schatzsuche.app.ui.components.LoadingBox
 import de.schatzsuche.app.ui.components.SchatzAppBar
+import de.schatzsuche.app.ui.components.SchatzConfirmDialog
 import de.schatzsuche.app.ui.components.ThemeChip
 import de.schatzsuche.app.ui.viewmodel.AdminViewModel
 import de.schatzsuche.app.ui.screens.setup.InitialSetupScreen
@@ -223,6 +224,7 @@ fun HuntEditScreen(
     val qrCodes by viewModel.qrCodes.collectAsState()
     var huntTitle by remember { mutableStateOf("") }
     var huntTheme by remember { mutableStateOf(HuntTheme.CLASSIC) }
+    var stepPendingDelete by remember { mutableStateOf<de.schatzsuche.app.data.model.HuntStepEntity?>(null) }
 
     LaunchedEffect(huntId) {
         val hunt = viewModel.getHunt(huntId)
@@ -347,13 +349,29 @@ fun HuntEditScreen(
                                 Text("🏆 Schatz-Schritt", style = MaterialTheme.typography.bodySmall)
                             }
                         }
-                        IconButton(onClick = { viewModel.deleteStep(step.id) }) {
+                        IconButton(onClick = { stepPendingDelete = step }) {
                             Icon(Icons.Default.Delete, contentDescription = "Löschen")
                         }
                     }
                 }
             }
         }
+    }
+
+    stepPendingDelete?.let { step ->
+        SchatzConfirmDialog(
+            onDismissRequest = { stepPendingDelete = null },
+            title = "Schritt löschen?",
+            message = "Möchtest du den Schritt „${step.title}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+            primaryLabel = "Abbrechen",
+            onPrimary = { stepPendingDelete = null },
+            secondaryLabel = "Schritt löschen",
+            onSecondary = {
+                viewModel.deleteStep(step.id)
+                stepPendingDelete = null
+            },
+            secondaryDestructive = true
+        )
     }
 }
 
