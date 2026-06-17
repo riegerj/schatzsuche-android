@@ -389,6 +389,7 @@ fun StepEditScreen(
         factory = StepEditViewModelFactory(repository, huntId, stepId)
     )
     val state by stepVm.state.collectAsState()
+    val huntSteps by viewModel.observeSteps(huntId).collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
     val saveAndBack: () -> Unit = {
@@ -488,12 +489,30 @@ fun StepEditScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val hasOtherFinalStep = step != null && huntSteps.any { it.id != step.id && it.isFinalStep }
+                val canMarkAsFinal = step?.isFinalStep == true || !hasOtherFinalStep
                 androidx.compose.material3.Switch(
                     checked = step.isFinalStep,
+                    enabled = canMarkAsFinal,
                     onCheckedChange = { stepVm.setFinalStep(it) }
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Letzter Schritt (Schatz)")
+                Text(
+                    "Letzter Schritt (Schatz)",
+                    color = if (canMarkAsFinal) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    }
+                )
+            }
+            val hasOtherFinalStep = step != null && huntSteps.any { it.id != step.id && it.isFinalStep }
+            if (step?.isFinalStep != true && hasOtherFinalStep) {
+                Text(
+                    "Es ist bereits ein Schatz-Schritt vorhanden. Nur ein letzter Schritt ist möglich.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
             }
             if (step.isFinalStep) {
                 OutlinedTextField(
