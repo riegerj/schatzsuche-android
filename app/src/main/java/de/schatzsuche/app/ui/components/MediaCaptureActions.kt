@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -205,6 +206,7 @@ private fun PhotoCaptureDialog(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isCapturing by remember { mutableStateOf(false) }
     var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var cameraFacing by remember { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -233,6 +235,30 @@ private fun PhotoCaptureDialog(
         )
     }
 
+    fun bindCameraUseCases(provider: ProcessCameraProvider, previewView: PreviewView, lensFacing: Int) {
+        val selector = CameraSelector.Builder()
+            .requireLensFacing(lensFacing)
+            .build()
+        val preview = Preview.Builder().build().also {
+            it.surfaceProvider = previewView.surfaceProvider
+        }
+        val capture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .build()
+        try {
+            provider.unbindAll()
+            provider.bindToLifecycle(
+                lifecycleOwner,
+                selector,
+                preview,
+                capture
+            )
+            imageCapture = capture
+        } catch (_: Exception) {
+            imageCapture = null
+        }
+    }
+
     Dialog(
         onDismissRequest = { if (!isCapturing) onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -252,25 +278,14 @@ private fun PhotoCaptureDialog(
                     cameraProviderFuture.addListener({
                         val provider = cameraProviderFuture.get()
                         cameraProvider = provider
-                        val preview = Preview.Builder().build().also {
-                            it.surfaceProvider = previewView.surfaceProvider
-                        }
-                        val capture = ImageCapture.Builder()
-                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                            .build()
-                        imageCapture = capture
-                        try {
-                            provider.unbindAll()
-                            provider.bindToLifecycle(
-                                lifecycleOwner,
-                                CameraSelector.DEFAULT_BACK_CAMERA,
-                                preview,
-                                capture
-                            )
-                        } catch (_: Exception) {
-                        }
+                        bindCameraUseCases(provider, previewView, cameraFacing)
                     }, ContextCompat.getMainExecutor(ctx))
                     previewView
+                },
+                update = { previewView ->
+                    cameraProvider?.let { provider ->
+                        bindCameraUseCases(provider, previewView, cameraFacing)
+                    }
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -284,6 +299,33 @@ private fun PhotoCaptureDialog(
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
             ) {
                 Icon(Icons.Default.Close, contentDescription = "Schließen", tint = Color.White)
+            }
+
+            val provider = cameraProvider
+            val hasFrontCamera = provider?.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) == true
+            if (hasFrontCamera) {
+                IconButton(
+                    onClick = {
+                        if (!isCapturing) {
+                            cameraFacing = if (cameraFacing == CameraSelector.LENS_FACING_BACK) {
+                                CameraSelector.LENS_FACING_FRONT
+                            } else {
+                                CameraSelector.LENS_FACING_BACK
+                            }
+                        }
+                    },
+                    enabled = !isCapturing,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+                ) {
+                    Icon(
+                        Icons.Default.Cameraswitch,
+                        contentDescription = "Kamera wechseln",
+                        tint = Color.White
+                    )
+                }
             }
 
             if (isCapturing) {
