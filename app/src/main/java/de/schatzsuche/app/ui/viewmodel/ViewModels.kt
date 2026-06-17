@@ -143,10 +143,11 @@ class AdminViewModel(private val repository: SchatzsucheRepository) : ViewModel(
     fun addStep(huntId: String, qrCodeId: String) {
         viewModelScope.launch {
             val steps = repository.getSteps(huntId)
+            val nextOrderIndex = (steps.maxOfOrNull { it.orderIndex } ?: -1) + 1
             val step = HuntStepEntity(
                 huntId = huntId,
-                orderIndex = steps.size,
-                title = "Schritt ${steps.size + 1}",
+                orderIndex = nextOrderIndex,
+                title = "Schritt ${nextOrderIndex + 1}",
                 instructionJson = listOf(
                     RichContentBlock(type = ContentBlockType.TEXT, text = "Beschreibe hier das Rätsel…")
                 ).toJson(),

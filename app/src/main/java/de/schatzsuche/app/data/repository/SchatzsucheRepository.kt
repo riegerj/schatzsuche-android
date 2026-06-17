@@ -99,7 +99,11 @@ class SchatzsucheRepository(context: Context) {
 
     suspend fun saveStep(step: HuntStepEntity) = huntStepDao.insert(step)
     suspend fun updateStep(step: HuntStepEntity) = huntStepDao.update(step)
-    suspend fun deleteStep(id: String) = huntStepDao.delete(id)
+    suspend fun deleteStep(id: String) {
+        val step = huntStepDao.getById(id)
+        huntStepDao.delete(id)
+        step?.let { normalizeStepOrder(it.huntId) }
+    }
     suspend fun getSteps(huntId: String) = huntStepDao.getByHunt(huntId)
     suspend fun getQrCodeByPayload(payload: String) = qrCodeDao.getByPayload(payload)
     suspend fun getQrCodeById(id: String) = qrCodeDao.getById(id)
@@ -131,18 +135,19 @@ class SchatzsucheRepository(context: Context) {
         stepStartedAt: Long,
         responses: List<TaskResponse>
     ): HuntSessionEntity {
+        val steps = huntStepDao.getByHunt(session.huntId)
+        val currentIndex = steps.indexOfFirst { it.id == step.id }.coerceAtLeast(0)
         stepCompletionDao.insert(
             StepCompletionEntity(
                 sessionId = session.id,
                 stepId = step.id,
-                stepIndex = step.orderIndex,
+                stepIndex = currentIndex,
                 startedAt = stepStartedAt,
                 completedAt = System.currentTimeMillis(),
                 taskResponsesJson = responses.toResponsesJson()
             )
         )
-        val steps = huntStepDao.getByHunt(session.huntId)
-        val nextIndex = step.orderIndex + 1
+        val nextIndex = currentIndex + 1
         val isLast = nextIndex >= steps.size
         val updated = session.copy(
             currentStepIndex = nextIndex,
@@ -159,6 +164,16 @@ class SchatzsucheRepository(context: Context) {
         val steps = huntStepDao.getByHunt(session.huntId)
         val completions = stepCompletionDao.getBySession(sessionId)
         return SessionDetails(session, hunt, steps, completions)
+    }
+
+    private suspend fun normalizeStepOrder(huntId: String) {
+        val orderedSteps = huntStepDao.getByHunt(huntId)
+        val normalized = orderedSteps.mapIndexed { index, s ->
+            if (s.orderIndex == index) s else s.copy(orderIndex = index)
+        }
+        if (normalized.any { step -> step.orderIndex != orderedSteps.find { it.id == step.id }?.orderIndex }) {
+            huntStepDao.insertAll(normalized)
+        }
     }
 }
 
