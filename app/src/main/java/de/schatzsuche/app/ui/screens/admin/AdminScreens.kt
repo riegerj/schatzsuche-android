@@ -323,7 +323,6 @@ fun HuntEditScreen(
                     hasCustomText ||
                     hasMediaBlocks ||
                     postTasks.isNotEmpty() ||
-                    step.isFinalStep ||
                     !step.treasureHint.isNullOrBlank()
 
                 ReorderableItem(reorderableState, key = step.id) { isDragging ->
@@ -524,33 +523,9 @@ fun StepEditScreen(
                 color = MaterialTheme.colorScheme.outline
             )
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val hasOtherFinalStep = step != null && huntSteps.any { it.id != step.id && it.isFinalStep }
-                val canMarkAsFinal = step?.isFinalStep == true || !hasOtherFinalStep
-                androidx.compose.material3.Switch(
-                    checked = step.isFinalStep,
-                    enabled = canMarkAsFinal,
-                    onCheckedChange = { stepVm.setFinalStep(it) }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Letzter Schritt (Schatz)",
-                    color = if (canMarkAsFinal) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    }
-                )
-            }
-            val hasOtherFinalStep = step != null && huntSteps.any { it.id != step.id && it.isFinalStep }
-            if (step?.isFinalStep != true && hasOtherFinalStep) {
-                Text(
-                    "Es ist bereits ein Schatz-Schritt vorhanden. Nur ein letzter Schritt ist möglich.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
-            if (step.isFinalStep) {
+            val isLastStep = huntSteps.lastOrNull()?.id == step.id
+            if (isLastStep) {
+                Text("🏆 Schatz-Schritt", fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = step.treasureHint.orEmpty(),
                     onValueChange = { stepVm.updateTreasureHint(it) },

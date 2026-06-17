@@ -544,12 +544,7 @@ class StepEditViewModel(
 
     fun updateTreasureHint(hint: String) {
         val step = _state.value.step ?: return
-        _state.value = _state.value.copy(step = step.copy(treasureHint = hint, isFinalStep = true))
-    }
-
-    fun setFinalStep(isFinal: Boolean) {
-        val step = _state.value.step ?: return
-        _state.value = _state.value.copy(step = step.copy(isFinalStep = isFinal))
+        _state.value = _state.value.copy(step = step.copy(treasureHint = hint))
     }
 
     fun updateInstructionText(text: String) {

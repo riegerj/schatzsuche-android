@@ -117,10 +117,14 @@ class SchatzsucheRepository(context: Context) {
         val orderedSteps = huntStepDao.getByHunt(huntId)
         if (orderedSteps.isEmpty()) return
         val qrCodes = qrCodeDao.getAll().sortedBy { it.number }
+        val lastIndex = orderedSteps.lastIndex
         val updated = orderedSteps.mapIndexed { index, step ->
+            val isLast = index == lastIndex
             step.copy(
                 orderIndex = index,
-                qrCodeId = qrCodes.getOrNull(index)?.codeId ?: step.qrCodeId
+                qrCodeId = qrCodes.getOrNull(index)?.codeId ?: step.qrCodeId,
+                isFinalStep = isLast,
+                treasureHint = if (isLast) step.treasureHint else null
             )
         }
         huntStepDao.insertAll(updated)
