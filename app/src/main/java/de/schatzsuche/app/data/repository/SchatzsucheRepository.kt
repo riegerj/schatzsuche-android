@@ -105,6 +105,13 @@ class SchatzsucheRepository(context: Context) {
         step?.let { normalizeStepOrder(it.huntId) }
     }
     suspend fun getSteps(huntId: String) = huntStepDao.getByHunt(huntId)
+    suspend fun reorderSteps(huntId: String, fromIndex: Int, toIndex: Int) {
+        val steps = huntStepDao.getByHunt(huntId).toMutableList()
+        if (fromIndex !in steps.indices || toIndex !in steps.indices || fromIndex == toIndex) return
+        val moved = steps.removeAt(fromIndex)
+        steps.add(toIndex, moved)
+        huntStepDao.insertAll(steps.mapIndexed { index, step -> step.copy(orderIndex = index) })
+    }
     suspend fun getQrCodeByPayload(payload: String) = qrCodeDao.getByPayload(payload)
     suspend fun getQrCodeById(id: String) = qrCodeDao.getById(id)
 

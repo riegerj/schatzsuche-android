@@ -162,6 +162,10 @@ class AdminViewModel(private val repository: SchatzsucheRepository) : ViewModel(
         viewModelScope.launch { repository.deleteStep(stepId) }
     }
 
+    fun reorderSteps(huntId: String, fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch { repository.reorderSteps(huntId, fromIndex, toIndex) }
+    }
+
     fun saveStep(step: HuntStepEntity) {
         viewModelScope.launch { repository.saveStep(step) }
     }

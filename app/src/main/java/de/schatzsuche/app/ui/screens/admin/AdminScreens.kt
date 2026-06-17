@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -76,6 +78,8 @@ import de.schatzsuche.app.ui.viewmodel.StepEditViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -258,7 +262,20 @@ fun HuntEditScreen(
             }
         }
     ) { padding ->
-        LazyColumn(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val lazyListState = rememberLazyListState()
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            val fromIndex = from.index - 1
+            val toIndex = to.index - 1
+            if (fromIndex in steps.indices && toIndex in steps.indices) {
+                viewModel.reorderSteps(huntId, fromIndex, toIndex)
+            }
+        }
+
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.padding(padding).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             item {
                 OutlinedTextField(
                     value = huntTitle,
@@ -287,8 +304,15 @@ fun HuntEditScreen(
                         }
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                Text("Schritte", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Zum Sortieren am Griff ziehen",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
-            items(steps) { step ->
+            items(steps, key = { it.id }) { step ->
                 val defaultTitle = "Schritt ${step.orderIndex + 1}"
                 val contentBlocks = step.instructionJson.toContentBlocks()
                 val postTasks = step.postScanTasksJson.toPostScanTasks()
@@ -307,18 +331,34 @@ fun HuntEditScreen(
                     step.isFinalStep ||
                     !step.treasureHint.isNullOrBlank()
 
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { onEditStep(huntId, step.id) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isEdited) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        }
-                    )
-                ) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
+                ReorderableItem(reorderableState, key = step.id) { isDragging ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = when {
+                                isDragging -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                                isEdited -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                else -> MaterialTheme.colorScheme.surface
+                            }
+                        )
+                    ) {
+                        Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                modifier = Modifier.draggableHandle(),
+                                onClick = {}
+                            ) {
+                                Icon(
+                                    Icons.Default.DragHandle,
+                                    contentDescription = "Schritt verschieben",
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .clickable { onEditStep(huntId, step.id) }
+                                    .padding(vertical = 8.dp)
+                            ) {
                             Text(
                                 "${step.orderIndex + 1}. ${step.title}",
                                 fontWeight = FontWeight.Bold
@@ -348,9 +388,10 @@ fun HuntEditScreen(
                             if (step.isFinalStep) {
                                 Text("🏆 Schatz-Schritt", style = MaterialTheme.typography.bodySmall)
                             }
-                        }
-                        IconButton(onClick = { stepPendingDelete = step }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Löschen")
+                            }
+                            IconButton(onClick = { stepPendingDelete = step }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Löschen")
+                            }
                         }
                     }
                 }
