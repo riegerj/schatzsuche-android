@@ -234,6 +234,7 @@ fun HuntEditScreen(
         val hunt = viewModel.getHunt(huntId)
         huntTitle = hunt?.title.orEmpty()
         huntTheme = hunt?.theme ?: HuntTheme.CLASSIC
+        viewModel.syncStepQrAssignments(huntId)
     }
 
     Scaffold(
@@ -249,14 +250,8 @@ fun HuntEditScreen(
             )
         },
         floatingActionButton = {
-            if (qrCodes.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = {
-                        val usedIds = steps.map { it.qrCodeId }.toSet()
-                        val nextCode = qrCodes.firstOrNull { it.codeId !in usedIds } ?: qrCodes.first()
-                        viewModel.addStep(huntId, nextCode.codeId)
-                    }
-                ) {
+            if (steps.size < qrCodes.size) {
+                FloatingActionButton(onClick = { viewModel.addStep(huntId) }) {
                     Icon(Icons.Default.Add, contentDescription = "Schritt hinzufügen")
                 }
             }
@@ -362,6 +357,11 @@ fun HuntEditScreen(
                             Text(
                                 "${step.orderIndex + 1}. ${step.title}",
                                 fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "QR-Karte #${(step.orderIndex + 1).toString().padStart(2, '0')}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                             if (isEdited) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -512,22 +512,17 @@ fun StepEditScreen(
                 onCapturedFile = { file, type -> stepVm.addCapturedMediaFile(file, type) }
             )
 
-            Text("QR-Code zuweisen", fontWeight = FontWeight.Bold)
-            state.availableQrCodes.forEach { code ->
-                val selected = state.selectedQrCode?.codeId == code.codeId
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { stepVm.selectQrCode(code) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Text(
-                        "Karte #${code.number.toString().padStart(2, '0')}",
-                        Modifier.padding(12.dp)
-                    )
-                }
-            }
+            Text(
+                "QR-Karte #${(step.orderIndex + 1).toString().padStart(2, '0')}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "Die Zuordnung zur QR-Karte erfolgt automatisch nach der Schritt-Reihenfolge.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val hasOtherFinalStep = step != null && huntSteps.any { it.id != step.id && it.isFinalStep }

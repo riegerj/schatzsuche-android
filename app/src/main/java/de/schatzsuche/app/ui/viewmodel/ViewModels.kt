@@ -140,21 +140,24 @@ class AdminViewModel(private val repository: SchatzsucheRepository) : ViewModel(
         viewModelScope.launch { repository.deleteHunt(id) }
     }
 
-    fun addStep(huntId: String, qrCodeId: String) {
+    fun addStep(huntId: String) {
         viewModelScope.launch {
             val steps = repository.getSteps(huntId)
-            val nextOrderIndex = (steps.maxOfOrNull { it.orderIndex } ?: -1) + 1
+            val qrCodes = repository.qrCodeDao.getAll().sortedBy { it.number }
+            val nextIndex = steps.size
+            val qrCode = qrCodes.getOrNull(nextIndex) ?: return@launch
             val step = HuntStepEntity(
                 huntId = huntId,
-                orderIndex = nextOrderIndex,
-                title = "Schritt ${nextOrderIndex + 1}",
+                orderIndex = nextIndex,
+                title = "Schritt ${nextIndex + 1}",
                 instructionJson = listOf(
                     RichContentBlock(type = ContentBlockType.TEXT, text = "Beschreibe hier das Rätsel…")
                 ).toJson(),
-                qrCodeId = qrCodeId,
+                qrCodeId = qrCode.codeId,
                 isFinalStep = false
             )
             repository.saveStep(step)
+            repository.syncStepQrAssignments(huntId)
         }
     }
 
@@ -164,6 +167,10 @@ class AdminViewModel(private val repository: SchatzsucheRepository) : ViewModel(
 
     fun reorderSteps(huntId: String, fromIndex: Int, toIndex: Int) {
         viewModelScope.launch { repository.reorderSteps(huntId, fromIndex, toIndex) }
+    }
+
+    fun syncStepQrAssignments(huntId: String) {
+        viewModelScope.launch { repository.syncStepQrAssignments(huntId) }
     }
 
     fun saveStep(step: HuntStepEntity) {
@@ -481,9 +488,7 @@ data class StepEditState(
     val step: HuntStepEntity? = null,
     val instructionText: String = "",
     val mediaBlocks: List<RichContentBlock> = emptyList(),
-    val postScanTasks: List<PostScanTask> = emptyList(),
-    val availableQrCodes: List<QrCodeEntity> = emptyList(),
-    val selectedQrCode: QrCodeEntity? = null
+    val postScanTasks: List<PostScanTask> = emptyList()
 )
 
 class StepEditViewModel(
@@ -499,17 +504,13 @@ class StepEditViewModel(
     private fun load() {
         viewModelScope.launch {
             val step = repository.huntStepDao.getById(stepId)
-            val codes = repository.qrCodeDao.getAll()
-            val selected = step?.let { repository.getQrCodeById(it.qrCodeId) }
             val blocks = step?.instructionJson?.toContentBlocks() ?: emptyList()
             val (instructionText, mediaBlocks) = splitInstructionBlocks(blocks)
             _state.value = StepEditState(
                 step = step,
                 instructionText = instructionText,
                 mediaBlocks = mediaBlocks,
-                postScanTasks = step?.postScanTasksJson?.toPostScanTasks() ?: emptyList(),
-                availableQrCodes = codes,
-                selectedQrCode = selected
+                postScanTasks = step?.postScanTasksJson?.toPostScanTasks() ?: emptyList()
             )
         }
     }
@@ -549,11 +550,6 @@ class StepEditViewModel(
     fun setFinalStep(isFinal: Boolean) {
         val step = _state.value.step ?: return
         _state.value = _state.value.copy(step = step.copy(isFinalStep = isFinal))
-    }
-
-    fun selectQrCode(code: QrCodeEntity) {
-        val step = _state.value.step ?: return
-        _state.value = _state.value.copy(step = step.copy(qrCodeId = code.codeId), selectedQrCode = code)
     }
 
     fun updateInstructionText(text: String) {
@@ -617,12 +613,21 @@ class StepEditViewModel(
         val current = _state.value
         val step = current.step ?: return
         withContext(Dispatchers.IO) {
+            val steps = repository.getSteps(huntId)
+            val stepIndex = steps.indexOfFirst { it.id == step.id }.coerceAtLeast(0)
+            val qrCodeId = repository.qrCodeDao.getAll()
+                .sortedBy { it.number }
+                .getOrNull(stepIndex)
+                ?.codeId ?: step.qrCodeId
             repository.saveStep(
                 step.copy(
+                    orderIndex = stepIndex,
+                    qrCodeId = qrCodeId,
                     instructionJson = buildInstructionJson(current.instructionText, current.mediaBlocks),
                     postScanTasksJson = current.postScanTasks.toTasksJson()
                 )
             )
+            repository.syncStepQrAssignments(huntId)
         }
     }
 }

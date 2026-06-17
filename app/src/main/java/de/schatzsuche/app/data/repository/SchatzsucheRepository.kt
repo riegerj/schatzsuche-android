@@ -102,7 +102,7 @@ class SchatzsucheRepository(context: Context) {
     suspend fun deleteStep(id: String) {
         val step = huntStepDao.getById(id)
         huntStepDao.delete(id)
-        step?.let { normalizeStepOrder(it.huntId) }
+        step?.let { syncStepQrAssignments(it.huntId) }
     }
     suspend fun getSteps(huntId: String) = huntStepDao.getByHunt(huntId)
     suspend fun reorderSteps(huntId: String, fromIndex: Int, toIndex: Int) {
@@ -111,6 +111,19 @@ class SchatzsucheRepository(context: Context) {
         val moved = steps.removeAt(fromIndex)
         steps.add(toIndex, moved)
         huntStepDao.insertAll(steps.mapIndexed { index, step -> step.copy(orderIndex = index) })
+        syncStepQrAssignments(huntId)
+    }
+    suspend fun syncStepQrAssignments(huntId: String) {
+        val orderedSteps = huntStepDao.getByHunt(huntId)
+        if (orderedSteps.isEmpty()) return
+        val qrCodes = qrCodeDao.getAll().sortedBy { it.number }
+        val updated = orderedSteps.mapIndexed { index, step ->
+            step.copy(
+                orderIndex = index,
+                qrCodeId = qrCodes.getOrNull(index)?.codeId ?: step.qrCodeId
+            )
+        }
+        huntStepDao.insertAll(updated)
     }
     suspend fun getQrCodeByPayload(payload: String) = qrCodeDao.getByPayload(payload)
     suspend fun getQrCodeById(id: String) = qrCodeDao.getById(id)
@@ -173,15 +186,6 @@ class SchatzsucheRepository(context: Context) {
         return SessionDetails(session, hunt, steps, completions)
     }
 
-    private suspend fun normalizeStepOrder(huntId: String) {
-        val orderedSteps = huntStepDao.getByHunt(huntId)
-        val normalized = orderedSteps.mapIndexed { index, s ->
-            if (s.orderIndex == index) s else s.copy(orderIndex = index)
-        }
-        if (normalized.any { step -> step.orderIndex != orderedSteps.find { it.id == step.id }?.orderIndex }) {
-            huntStepDao.insertAll(normalized)
-        }
-    }
 }
 
 data class SessionDetails(
