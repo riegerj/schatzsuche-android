@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.History
@@ -286,9 +287,33 @@ fun HuntEditScreen(
                 }
             }
             items(steps) { step ->
+                val defaultTitle = "Schritt ${step.orderIndex + 1}"
+                val contentBlocks = step.instructionJson.toContentBlocks()
+                val postTasks = step.postScanTasksJson.toPostScanTasks()
+                val hasCustomText = contentBlocks
+                    .any { it.type == de.schatzsuche.app.data.model.ContentBlockType.TEXT && !it.text.isNullOrBlank() && it.text != "Beschreibe hier das Rätsel…" }
+                val hasMediaBlocks = contentBlocks.any {
+                    (it.type == de.schatzsuche.app.data.model.ContentBlockType.IMAGE ||
+                        it.type == de.schatzsuche.app.data.model.ContentBlockType.AUDIO ||
+                        it.type == de.schatzsuche.app.data.model.ContentBlockType.VIDEO) &&
+                        !it.mediaPath.isNullOrBlank()
+                }
+                val isEdited = step.title != defaultTitle ||
+                    hasCustomText ||
+                    hasMediaBlocks ||
+                    postTasks.isNotEmpty() ||
+                    step.isFinalStep ||
+                    !step.treasureHint.isNullOrBlank()
+
                 Card(
                     modifier = Modifier.fillMaxWidth().clickable { onEditStep(huntId, step.id) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isEdited) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
+                    )
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -296,6 +321,28 @@ fun HuntEditScreen(
                                 "${step.orderIndex + 1}. ${step.title}",
                                 fontWeight = FontWeight.Bold
                             )
+                            if (isEdited) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        "Bearbeitet",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    "Noch nicht bearbeitet",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
                             if (step.isFinalStep) {
                                 Text("🏆 Schatz-Schritt", style = MaterialTheme.typography.bodySmall)
                             }
