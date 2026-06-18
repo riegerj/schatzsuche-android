@@ -1,6 +1,16 @@
 package de.schatzsuche.app.ui.screens.play
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -62,14 +72,11 @@ fun PlayScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val session by viewModel.session.collectAsState()
-    val completions by viewModel.completions.collectAsState()
     var showCancelDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(completions.size) {
-        if (completions.isNotEmpty()) {
-            scrollState.animateScrollTo(scrollState.maxValue)
-        }
+    LaunchedEffect(uiState.currentStep?.id, uiState.phase) {
+        scrollState.animateScrollTo(0)
     }
 
     LaunchedEffect(uiState.phase) {
@@ -115,9 +122,16 @@ fun PlayScreen(
                         animateLatest = true
                     )
 
-                    when (uiState.phase) {
+                    AnimatedContent(
+                        targetState = uiState.phase to uiState.currentStep,
+                        transitionSpec = {
+                            (fadeIn(tween(350)) + slideInVertically { it / 4 }) togetherWith
+                                (fadeOut(tween(200)) + slideOutVertically { -it / 4 })
+                        },
+                        label = "playStep"
+                    ) { (phase, step) ->
+                    when (phase) {
                         PlayPhase.INSTRUCTION, PlayPhase.SCAN -> {
-                            val step = uiState.currentStep
                             if (step != null) {
                                 Text(
                                     "${step.orderIndex + 1}. ${step.title}",
@@ -140,7 +154,6 @@ fun PlayScreen(
                             }
                         }
                         PlayPhase.POST_TASKS -> {
-                            val step = uiState.currentStep
                             Text(
                                 "Aufgabe erfüllen",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -161,7 +174,6 @@ fun PlayScreen(
                             }
                         }
                         PlayPhase.TREASURE -> {
-                            val step = uiState.currentStep
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.fillMaxWidth()
@@ -197,6 +209,18 @@ fun PlayScreen(
                             Text("Schatzsuche abgeschlossen…")
                         }
                     }
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = uiState.transitionHint != null,
+                enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.88f, animationSpec = tween(250)),
+                exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.92f, animationSpec = tween(200)),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                uiState.transitionHint?.let { hint ->
+                    StepTransitionOverlay(hint)
                 }
             }
 
@@ -228,6 +252,43 @@ fun PlayScreen(
             },
             secondaryDestructive = true
         )
+    }
+}
+
+@Composable
+private fun StepTransitionOverlay(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier.padding(horizontal = 32.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "✓",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    message,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
     }
 }
 

@@ -27,6 +27,7 @@ import de.schatzsuche.app.data.repository.SchatzsucheRepository
 import de.schatzsuche.app.util.MediaStorage
 import de.schatzsuche.app.util.QrCodeUtil
 import de.schatzsuche.app.util.TaskValidator
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -225,6 +226,7 @@ data class PlayUiState(
     val scanMessage: String? = null,
     val scanMessageSuccess: Boolean? = null,
     val taskError: String? = null,
+    val transitionHint: String? = null,
     val stepStartedAt: Long = System.currentTimeMillis(),
     val completedCount: Int = 0,
     val totalSteps: Int = 0,
@@ -247,6 +249,18 @@ class PlayViewModel(
     private var steps: List<HuntStepEntity> = emptyList()
     private var huntTheme: HuntTheme = HuntTheme.CLASSIC
     private var scanAttemptId = 0
+    private var transitionHintJob: Job? = null
+
+    private fun showTransitionHint(message: String) {
+        transitionHintJob?.cancel()
+        _uiState.value = _uiState.value.copy(transitionHint = message)
+        transitionHintJob = viewModelScope.launch {
+            delay(2500)
+            if (_uiState.value.transitionHint == message) {
+                _uiState.value = _uiState.value.copy(transitionHint = null)
+            }
+        }
+    }
 
     init {
         viewModelScope.launch { loadGame() }
@@ -352,6 +366,7 @@ class PlayViewModel(
                 scanMessageSuccess = null,
                 taskResponses = emptyMap()
             )
+            showTransitionHint("QR-Code erkannt! Löse jetzt die Aufgabe.")
         } else if (step.isFinalStep) {
             _uiState.value = state.copy(
                 phase = PlayPhase.TREASURE,
@@ -359,6 +374,7 @@ class PlayViewModel(
                 scanMessage = null,
                 scanMessageSuccess = null
             )
+            showTransitionHint("Geschafft! Du hast den Schatz erreicht!")
         } else {
             advanceOrFinish()
         }
@@ -380,6 +396,7 @@ class PlayViewModel(
         }
         if (step.isFinalStep) {
             _uiState.value = state.copy(phase = PlayPhase.TREASURE, completedCount = steps.size)
+            showTransitionHint("Geschafft! Du hast den Schatz erreicht!")
         } else {
             viewModelScope.launch {
                 advanceOrFinish(state.taskResponses.values.toList())
@@ -417,6 +434,7 @@ class PlayViewModel(
                 huntTheme = huntTheme,
                 stepStartedAt = System.currentTimeMillis()
             )
+            nextStep?.let { showTransitionHint("Weiter mit Schritt ${it.orderIndex + 1}!") }
         }
     }
 
