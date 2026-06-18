@@ -348,10 +348,10 @@ fun TreasureMap(
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(
-                "🗺️ Schatzkarte",
-                style = MaterialTheme.typography.titleMedium,
+                "Schatzkarte",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = palette.accent
+                color = palette.onBackground
             )
             Spacer(Modifier.height(12.dp))
             BoxWithConstraints(
