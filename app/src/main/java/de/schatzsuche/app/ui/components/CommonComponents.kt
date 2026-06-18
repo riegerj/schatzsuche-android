@@ -487,18 +487,21 @@ fun ContentBlocksDisplay(
                 }
 
             if (showMedia) {
-                if (imagePaths.isNotEmpty()) {
-                    InstructionImageGalleryCard(
-                        imagePath = imagePaths.first(),
-                        imageCount = imagePaths.size,
-                        onOpen = { fullScreenImageIndex = 0 }
-                    )
-                }
+                var imagesShown = false
                 blocks
                     .filter { it.type != ContentBlockType.TEXT }
                     .forEach { block ->
                         when (block.type) {
-                            ContentBlockType.IMAGE -> Unit
+                            ContentBlockType.IMAGE -> {
+                                if (!imagesShown && imagePaths.isNotEmpty()) {
+                                    InstructionImageOpenButton(
+                                        imagePath = imagePaths.first(),
+                                        imageCount = imagePaths.size,
+                                        onOpen = { fullScreenImageIndex = 0 }
+                                    )
+                                    imagesShown = true
+                                }
+                            }
                             ContentBlockType.AUDIO -> {
                                 block.mediaPath?.let { path ->
                                     InstructionAudioPlayer(path = path, immersiveMedia = true)
@@ -780,34 +783,63 @@ private fun InstructionVideoPlayer(
 }
 
 @Composable
-private fun InstructionImageGalleryCard(
+private fun InstructionImageOpenButton(
     imagePath: String,
     imageCount: Int,
     onOpen: () -> Unit
 ) {
+    val bitmap = remember(imagePath) { ImageUtil.decodeOrientedBitmap(imagePath) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpen() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(8.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 8.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-                Spacer(Modifier.width(8.dp))
-                Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Hinweis ansehen", fontWeight = FontWeight.SemiBold)
                 if (imageCount > 1) {
                     Text(
-                        "$imageCount Bilder · Wischen",
+                        "$imageCount Bilder",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
-            InstructionImageDisplay(path = imagePath)
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }
