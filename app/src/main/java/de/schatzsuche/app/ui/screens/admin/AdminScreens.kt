@@ -59,6 +59,7 @@ import de.schatzsuche.app.data.model.HuntSessionStatus
 import de.schatzsuche.app.data.model.HuntTheme
 import de.schatzsuche.app.data.model.PostScanTaskType
 import de.schatzsuche.app.data.model.RichContentBlock
+import de.schatzsuche.app.data.model.TreasureHuntEntity
 import de.schatzsuche.app.data.model.toContentBlocks
 import de.schatzsuche.app.data.model.toPostScanTasks
 import de.schatzsuche.app.data.model.toTaskResponses
@@ -96,6 +97,7 @@ fun AdminHomeScreen(
 ) {
     val hunts by viewModel.hunts.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
+    var huntPendingDelete by remember { mutableStateOf<TreasureHuntEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -157,7 +159,7 @@ fun AdminHomeScreen(
                                     Text(hunt.title, fontWeight = FontWeight.Bold)
                                     Text("${hunt.theme.displayName}", style = MaterialTheme.typography.bodySmall)
                                 }
-                                IconButton(onClick = { viewModel.deleteHunt(hunt.id) }) {
+                                IconButton(onClick = { huntPendingDelete = hunt }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Löschen")
                                 }
                             }
@@ -177,6 +179,22 @@ fun AdminHomeScreen(
                     onEditHunt(id)
                 }
             }
+        )
+    }
+
+    huntPendingDelete?.let { hunt ->
+        SchatzConfirmDialog(
+            onDismissRequest = { huntPendingDelete = null },
+            title = "Schatzsuche löschen?",
+            message = "Möchtest du die Schatzsuche „${hunt.title}“ wirklich löschen? Alle Schritte und zugehörigen Daten gehen dabei verloren. Diese Aktion kann nicht rückgängig gemacht werden.",
+            primaryLabel = "Abbrechen",
+            onPrimary = { huntPendingDelete = null },
+            secondaryLabel = "Schatzsuche löschen",
+            onSecondary = {
+                viewModel.deleteHunt(hunt.id)
+                huntPendingDelete = null
+            },
+            secondaryDestructive = true
         )
     }
 }
