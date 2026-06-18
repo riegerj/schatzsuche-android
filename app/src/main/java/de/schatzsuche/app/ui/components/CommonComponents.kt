@@ -27,11 +27,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -100,9 +103,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -119,6 +126,7 @@ import de.schatzsuche.app.data.model.PostScanTaskType
 import de.schatzsuche.app.data.model.RichContentBlock
 import de.schatzsuche.app.data.model.TaskResponse
 import de.schatzsuche.app.ui.theme.SchatzButtonDefaults
+import de.schatzsuche.app.ui.theme.ThemePalette
 import de.schatzsuche.app.ui.theme.toPalette
 import de.schatzsuche.app.util.ImageUtil
 import de.schatzsuche.app.util.MediaStorage
@@ -236,6 +244,84 @@ fun SchatzConfirmDialog(
     }
 }
 
+private fun clampMapPanOffset(
+    offset: Offset,
+    viewportWidth: Float,
+    viewportHeight: Float,
+    contentWidth: Float,
+    contentHeight: Float
+): Offset {
+    val maxX = (contentWidth - viewportWidth).coerceAtLeast(0f)
+    val maxY = (contentHeight - viewportHeight).coerceAtLeast(0f)
+    return Offset(
+        x = offset.x.coerceIn(0f, maxX),
+        y = offset.y.coerceIn(0f, maxY)
+    )
+}
+
+private fun DrawScope.drawTreasureMapContent(
+    totalSteps: Int,
+    completedSteps: Int,
+    palette: ThemePalette,
+    animateLatest: Boolean,
+    dashPhase: Float,
+    contentWidth: Float,
+    contentHeight: Float
+) {
+    if (totalSteps <= 0) return
+    val stepHeight = contentHeight / (totalSteps + 1)
+    val centerX = contentWidth / 2f
+    val startPoint = Offset(centerX, stepHeight * 0.5f)
+
+    fun locationForStep(stepIndex: Int): Offset {
+        val xOffset = if (stepIndex % 2 == 0) -60f else 60f
+        return Offset(centerX + xOffset, stepHeight * (stepIndex + 1))
+    }
+
+    val treasurePoint = locationForStep(totalSteps - 1)
+
+    if (completedSteps > 0) {
+        val path = Path()
+        path.moveTo(startPoint.x, startPoint.y)
+        for (i in 0 until completedSteps.coerceAtMost(totalSteps)) {
+            val point = locationForStep(i)
+            path.lineTo(point.x, point.y)
+        }
+        drawPath(
+            path = path,
+            color = palette.mapPath,
+            style = Stroke(
+                width = 4f,
+                pathEffect = PathEffect.dashPathEffect(
+                    floatArrayOf(12f, 8f),
+                    if (animateLatest) dashPhase else 0f
+                )
+            )
+        )
+    }
+
+    drawCircle(color = palette.accent, radius = 14f, center = startPoint)
+
+    if (totalSteps > 1) {
+        for (index in 0 until totalSteps - 1) {
+            val point = locationForStep(index)
+            val isCompleted = index < completedSteps
+            val isCurrent = index == completedSteps
+            drawCircle(
+                color = when {
+                    isCompleted -> palette.mapPath
+                    isCurrent -> palette.accent
+                    else -> palette.mapDot.copy(alpha = 0.5f)
+                },
+                radius = 10f,
+                center = point
+            )
+        }
+    }
+
+    drawCircle(color = Color(0xFFFFD700), radius = 16f, center = treasurePoint)
+}
+
 @Composable
 fun TreasureMap(
     theme: HuntTheme,
@@ -245,6 +331,7 @@ fun TreasureMap(
     animateLatest: Boolean = true
 ) {
     val palette = theme.toPalette()
+    val density = LocalDensity.current
     val infiniteTransition = rememberInfiniteTransition(label = "map")
     val dashPhase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -252,6 +339,7 @@ fun TreasureMap(
         animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Restart),
         label = "dash"
     )
+    var panOffset by remember { mutableStateOf(Offset.Zero) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -266,72 +354,81 @@ fun TreasureMap(
                 color = palette.accent
             )
             Spacer(Modifier.height(12.dp))
-            Canvas(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height((totalSteps.coerceAtLeast(1) * 80 + 40).dp)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(palette.background.copy(alpha = 0.35f))
             ) {
-                if (totalSteps <= 0) return@Canvas
-                val stepHeight = size.height / (totalSteps + 1)
-                val centerX = size.width / 2f
-                val startPoint = Offset(centerX, stepHeight * 0.5f)
-
-                fun locationForStep(stepIndex: Int): Offset {
-                    val xOffset = if (stepIndex % 2 == 0) -60f else 60f
-                    return Offset(centerX + xOffset, stepHeight * (stepIndex + 1))
+                val viewportWidthPx = constraints.maxWidth.toFloat()
+                val viewportHeightPx = constraints.maxHeight.toFloat()
+                val contentWidthPx = viewportWidthPx
+                val contentHeightPx = with(density) {
+                    (totalSteps.coerceAtLeast(1) * 80 + 40).dp.toPx()
                 }
+                val isPannable = contentWidthPx > viewportWidthPx || contentHeightPx > viewportHeightPx
 
-                val treasurePoint = locationForStep(totalSteps - 1)
-
-                if (completedSteps > 0) {
-                    val path = Path()
-                    path.moveTo(startPoint.x, startPoint.y)
-                    for (i in 0 until completedSteps.coerceAtMost(totalSteps)) {
-                        val point = locationForStep(i)
-                        path.lineTo(point.x, point.y)
+                LaunchedEffect(completedSteps, totalSteps, viewportWidthPx, viewportHeightPx, animateLatest) {
+                    if (totalSteps <= 0) return@LaunchedEffect
+                    val focusIndex = if (animateLatest) {
+                        completedSteps.coerceIn(0, totalSteps - 1)
+                    } else {
+                        (totalSteps - 1).coerceAtLeast(0)
                     }
-                    drawPath(
-                        path = path,
-                        color = palette.mapPath,
-                        style = Stroke(
-                            width = 4f,
-                            pathEffect = PathEffect.dashPathEffect(
-                                floatArrayOf(12f, 8f),
-                                if (animateLatest) dashPhase else 0f
-                            )
-                        )
+                    val stepHeight = contentHeightPx / (totalSteps + 1)
+                    val focusY = stepHeight * (focusIndex + 1)
+                    panOffset = clampMapPanOffset(
+                        offset = Offset(0f, focusY - viewportHeightPx / 2f),
+                        viewportWidth = viewportWidthPx,
+                        viewportHeight = viewportHeightPx,
+                        contentWidth = contentWidthPx,
+                        contentHeight = contentHeightPx
                     )
                 }
 
-                drawCircle(
-                    color = palette.accent,
-                    radius = 14f,
-                    center = startPoint
-                )
-
-                if (totalSteps > 1) {
-                    for (index in 0 until totalSteps - 1) {
-                        val point = locationForStep(index)
-                        val isCompleted = index < completedSteps
-                        val isCurrent = index == completedSteps
-                        drawCircle(
-                            color = when {
-                                isCompleted -> palette.mapPath
-                                isCurrent -> palette.accent
-                                else -> palette.mapDot.copy(alpha = 0.5f)
-                            },
-                            radius = 10f,
-                            center = point
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (isPannable) {
+                                Modifier.pointerInput(totalSteps, viewportWidthPx, viewportHeightPx) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        panOffset = clampMapPanOffset(
+                                            offset = panOffset + dragAmount,
+                                            viewportWidth = viewportWidthPx,
+                                            viewportHeight = viewportHeightPx,
+                                            contentWidth = contentWidthPx,
+                                            contentHeight = contentHeightPx
+                                        )
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
+                ) {
+                    val verticalInset = ((viewportHeightPx - contentHeightPx) / 2f).coerceAtLeast(0f)
+                    val horizontalInset = ((viewportWidthPx - contentWidthPx) / 2f).coerceAtLeast(0f)
+                    translate(-panOffset.x + horizontalInset, -panOffset.y + verticalInset) {
+                        drawTreasureMapContent(
+                            totalSteps = totalSteps,
+                            completedSteps = completedSteps,
+                            palette = palette,
+                            animateLatest = animateLatest,
+                            dashPhase = dashPhase,
+                            contentWidth = contentWidthPx,
+                            contentHeight = contentHeightPx
                         )
                     }
                 }
-
-                drawCircle(color = Color(0xFFFFD700), radius = 16f, center = treasurePoint)
             }
             Text(
                 "Fortschritt: $completedSteps / $totalSteps",
                 style = MaterialTheme.typography.bodyMedium,
-                color = palette.onBackground
+                color = palette.onBackground,
+                modifier = Modifier.padding(top = 8.dp)
             )
         }
     }
