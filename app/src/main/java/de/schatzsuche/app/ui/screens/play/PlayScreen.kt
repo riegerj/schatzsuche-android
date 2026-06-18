@@ -50,7 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import de.schatzsuche.app.data.model.toContentBlocks
+import de.schatzsuche.app.data.model.toParticipantContentBlocks
 import de.schatzsuche.app.data.model.toPostScanTasks
 import de.schatzsuche.app.ui.components.ContentBlocksDisplay
 import de.schatzsuche.app.ui.components.PostScanTasksForm
@@ -139,7 +139,7 @@ fun PlayScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 ContentBlocksDisplay(
-                                    blocks = step.instructionJson.toContentBlocks(),
+                                    blocks = step.instructionJson.toParticipantContentBlocks(step.orderIndex + 1),
                                     immersiveMedia = true
                                 )
                                 Spacer(Modifier.height(8.dp))
