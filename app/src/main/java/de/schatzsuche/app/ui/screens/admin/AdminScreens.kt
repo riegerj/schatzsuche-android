@@ -54,9 +54,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import de.schatzsuche.app.data.model.ContentBlockType
 import de.schatzsuche.app.data.model.HuntSessionStatus
 import de.schatzsuche.app.data.model.HuntTheme
 import de.schatzsuche.app.data.model.PostScanTaskType
+import de.schatzsuche.app.data.model.RichContentBlock
 import de.schatzsuche.app.data.model.toContentBlocks
 import de.schatzsuche.app.data.model.toPostScanTasks
 import de.schatzsuche.app.data.model.toTaskResponses
@@ -431,6 +433,7 @@ fun StepEditScreen(
     val state by stepVm.state.collectAsState()
     val huntSteps by viewModel.observeSteps(huntId).collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    var mediaPendingDelete by remember { mutableStateOf<RichContentBlock?>(null) }
 
     val saveAndBack: () -> Unit = {
         scope.launch {
@@ -498,7 +501,7 @@ fun StepEditScreen(
                             else -> Unit
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            IconButton(onClick = { stepVm.removeMediaBlock(block.id) }) {
+                            IconButton(onClick = { mediaPendingDelete = block }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Entfernen")
                             }
                         }
@@ -584,6 +587,28 @@ fun StepEditScreen(
                 Text("Speichern")
             }
         }
+    }
+
+    mediaPendingDelete?.let { block ->
+        val mediaLabel = when (block.type) {
+            ContentBlockType.IMAGE -> "Bild"
+            ContentBlockType.AUDIO -> "Audioaufnahme"
+            ContentBlockType.VIDEO -> "Video"
+            else -> "Medium"
+        }
+        SchatzConfirmDialog(
+            onDismissRequest = { mediaPendingDelete = null },
+            title = "$mediaLabel löschen?",
+            message = "Möchtest du diese $mediaLabel wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
+            primaryLabel = "Abbrechen",
+            onPrimary = { mediaPendingDelete = null },
+            secondaryLabel = "$mediaLabel löschen",
+            onSecondary = {
+                stepVm.removeMediaBlock(block.id)
+                mediaPendingDelete = null
+            },
+            secondaryDestructive = true
+        )
     }
 }
 
