@@ -124,6 +124,7 @@ fun PlayScreen(
 
                     AnimatedContent(
                         targetState = uiState.phase to uiState.currentStep,
+                        modifier = Modifier.fillMaxWidth(),
                         transitionSpec = {
                             (fadeIn(tween(350)) + slideInVertically { it / 4 }) togetherWith
                                 (fadeOut(tween(200)) + slideOutVertically { -it / 4 })
@@ -133,44 +134,53 @@ fun PlayScreen(
                     when (phase) {
                         PlayPhase.INSTRUCTION, PlayPhase.SCAN -> {
                             if (step != null) {
-                                Text(
-                                    "${step.orderIndex + 1}. ${step.title}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                ContentBlocksDisplay(
-                                    blocks = step.instructionJson.toParticipantContentBlocks(step.orderIndex + 1),
-                                    immersiveMedia = true
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = { viewModel.showScanner() },
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = SchatzButtonDefaults.filledButtonPadding(),
-                                    colors = SchatzButtonDefaults.filledButtonColors()
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    Text("QR-Code scannen", style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        "${step.orderIndex + 1}. ${step.title}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    ContentBlocksDisplay(
+                                        blocks = step.instructionJson.toParticipantContentBlocks(step.orderIndex + 1),
+                                        immersiveMedia = true
+                                    )
+                                    Button(
+                                        onClick = { viewModel.showScanner() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentPadding = SchatzButtonDefaults.filledButtonPadding(),
+                                        colors = SchatzButtonDefaults.filledButtonColors()
+                                    ) {
+                                        Text("QR-Code scannen", style = MaterialTheme.typography.titleMedium)
+                                    }
                                 }
                             }
                         }
                         PlayPhase.POST_TASKS -> {
-                            Text(
-                                "Aufgabe erfüllen",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            step?.let {
-                                PostScanTasksForm(
-                                    tasks = it.postScanTasksJson.toPostScanTasks(),
-                                    responses = uiState.taskResponses,
-                                    onResponse = { task, response ->
-                                        viewModel.updateTaskResponse(task, response)
-                                    },
-                                    error = uiState.taskError
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    "Aufgabe erfüllen",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
-                            }
-                            Button(onClick = { viewModel.submitPostTasks() }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Aufgabe abschließen")
+                                step?.let {
+                                    PostScanTasksForm(
+                                        tasks = it.postScanTasksJson.toPostScanTasks(),
+                                        responses = uiState.taskResponses,
+                                        onResponse = { task, response ->
+                                            viewModel.updateTaskResponse(task, response)
+                                        },
+                                        error = uiState.taskError
+                                    )
+                                }
+                                Button(onClick = { viewModel.submitPostTasks() }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Aufgabe abschließen")
+                                }
                             }
                         }
                         PlayPhase.TREASURE -> {
