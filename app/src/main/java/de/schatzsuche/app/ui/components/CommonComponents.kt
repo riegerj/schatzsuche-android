@@ -425,7 +425,7 @@ fun TreasureMap(
                 }
             }
             Text(
-                "Fortschritt: $completedSteps / $totalSteps",
+                "$completedSteps / $totalSteps",
                 style = MaterialTheme.typography.bodyMedium,
                 color = palette.onBackground,
                 modifier = Modifier.padding(top = 8.dp)
