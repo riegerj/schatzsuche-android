@@ -316,7 +316,7 @@ fun TreasureMap(
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
                                         panOffset = clampMapPanOffset(
-                                            offset = panOffset + dragAmount,
+                                            offset = panOffset - dragAmount,
                                             viewportWidth = viewportWidthPx,
                                             viewportHeight = viewportHeightPx,
                                             contentWidth = contentWidthPx,
