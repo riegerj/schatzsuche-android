@@ -11,7 +11,7 @@ Eine Android-App zum Erstellen und Spielen von QR-Code-basierten Schatzsuchen.
 - Erstkonfiguration oder später im Admin-Bereich änderbar
 
 ### Admin-Modus
-- Schatzsuchen mit Themes erstellen (Piraten, Weltraum, Ritter/Verlies, Ägypten, Klassisch)
+- Schatzsuchen mit Themes erstellen (Piraten, Weltraum, Ritter/Verlies, Ägypten, Klassisch, Dschungel)
 - Schritte mit Überschrift, Text, Bildern, Audio und Video
 - QR-Codes pro Schritt zuweisen
 - Aufgaben nach dem Scan: Textfeld, Single/Multiple Choice, Foto/Video/Audio

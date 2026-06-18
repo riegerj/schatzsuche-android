@@ -9,7 +9,8 @@ enum class HuntTheme(val displayName: String, val emoji: String) {
     SPACE("Weltraum", "🚀"),
     KNIGHTS("Ritter & Verlies", "⚔️"),
     EGYPT("Ägypten", "🏺"),
-    CLASSIC("Klassisch", "🗺️")
+    CLASSIC("Klassisch", "🗺️"),
+    JUNGLE("Dschungel", "🌴")
 }
 
 enum class PostScanTaskType {

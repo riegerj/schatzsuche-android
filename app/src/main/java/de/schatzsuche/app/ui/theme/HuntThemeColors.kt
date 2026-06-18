@@ -71,4 +71,15 @@ fun HuntTheme.toPalette(): ThemePalette = when (this) {
         mapPath = Color(0xFFFFB74D),
         mapDot = Color(0xFF81C784)
     )
+    HuntTheme.JUNGLE -> ThemePalette(
+        primary = Color(0xFF1B4D2E),
+        secondary = Color(0xFF2E7D4E),
+        background = Color(0xFF0D1F14),
+        surface = Color(0xFF1A3324),
+        onPrimary = Color(0xFFE8F5E9),
+        onBackground = Color(0xFFDCEFD4),
+        accent = Color(0xFFFFB300),
+        mapPath = Color(0xFF76FF03),
+        mapDot = Color(0xFF43A047)
+    )
 }

@@ -54,6 +54,7 @@ internal fun DrawScope.drawTreasureMapBackground(
         HuntTheme.KNIGHTS -> drawKnightsMapBackground(palette, width, height)
         HuntTheme.EGYPT -> drawEgyptMapBackground(palette, width, height)
         HuntTheme.CLASSIC -> drawClassicMapBackground(palette, width, height)
+        HuntTheme.JUNGLE -> drawJungleMapBackground(palette, width, height)
     }
 
     drawRect(
@@ -227,6 +228,53 @@ private fun DrawScope.drawClassicMapBackground(palette: ThemePalette, width: Flo
         strokeWidth = 2f,
         pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 14f))
     )
+}
+
+private fun DrawScope.drawJungleMapBackground(palette: ThemePalette, width: Float, height: Float) {
+    val canopyColor = palette.secondary.copy(alpha = 0.2f)
+    repeat(5) { layer ->
+        val y = height * (0.08f + layer * 0.16f)
+        drawLine(
+            canopyColor,
+            Offset(0f, y),
+            Offset(width, y + sin(layer * 1.4f) * 10f),
+            strokeWidth = 3f
+        )
+    }
+
+    val vineColor = palette.mapDot.copy(alpha = 0.22f)
+    listOf(0.15f, 0.42f, 0.68f, 0.88f).forEachIndexed { index, fx ->
+        val path = Path()
+        val x = width * fx
+        path.moveTo(x, 0f)
+        var py = 0f
+        while (py <= height * 0.85f) {
+            val px = x + sin(py / 38f + index) * 12f
+            path.lineTo(px, py)
+            py += 14f
+        }
+        drawPath(path, vineColor, style = Stroke(width = 2.5f))
+    }
+
+    val leafColor = palette.mapPath.copy(alpha = 0.14f)
+    repeat(20) { index ->
+        val cx = ((index * 191) % 1000) / 1000f * width
+        val cy = ((index * 277) % 1000) / 1000f * height
+        drawCircle(leafColor, 10f + (index % 3) * 4f, Offset(cx, cy))
+        drawCircle(leafColor.copy(alpha = 0.1f), 6f, Offset(cx + 8f, cy - 5f))
+        drawCircle(leafColor.copy(alpha = 0.1f), 6f, Offset(cx - 7f, cy - 4f))
+    }
+
+    val riverColor = palette.accent.copy(alpha = 0.1f)
+    val river = Path()
+    river.moveTo(width * 0.05f, height * 0.92f)
+    var px = width * 0.05f
+    while (px <= width * 0.95f) {
+        val py = height * 0.88f + sin(px / 48f) * 10f
+        river.lineTo(px, py)
+        px += 12f
+    }
+    drawPath(river, riverColor, style = Stroke(width = 5f))
 }
 
 private fun DrawScope.drawMapMarker(
