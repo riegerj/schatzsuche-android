@@ -4,11 +4,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.IntSize
 import de.schatzsuche.app.data.model.HuntTheme
 import de.schatzsuche.app.ui.theme.ThemePalette
 import kotlin.math.cos
@@ -33,8 +35,46 @@ internal fun DrawScope.drawTreasureMapBackground(
     theme: HuntTheme,
     palette: ThemePalette,
     width: Float,
-    height: Float
+    height: Float,
+    backgroundImage: ImageBitmap? = null
 ) {
+    if (backgroundImage != null) {
+        val imageWidth = backgroundImage.width.toFloat().coerceAtLeast(1f)
+        val scaledHeight = width * (backgroundImage.height.toFloat() / imageWidth)
+
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    palette.surface,
+                    palette.background,
+                    palette.background.copy(alpha = 0.92f)
+                ),
+                startY = 0f,
+                endY = height
+            ),
+            size = Size(width, height)
+        )
+        drawImage(
+            image = backgroundImage,
+            dstSize = IntSize(
+                width = width.toInt().coerceAtLeast(1),
+                height = scaledHeight.toInt().coerceAtLeast(1)
+            )
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    palette.background.copy(alpha = 0.35f)
+                ),
+                center = Offset(width / 2f, height / 2f),
+                radius = width.coerceAtLeast(height) * 0.75f
+            ),
+            size = Size(width, height)
+        )
+        return
+    }
+
     drawRect(
         brush = Brush.verticalGradient(
             colors = listOf(
@@ -304,11 +344,12 @@ internal fun DrawScope.drawTreasureMapContent(
     animateLatest: Boolean,
     dashPhase: Float,
     contentWidth: Float,
-    contentHeight: Float
+    contentHeight: Float,
+    backgroundImage: ImageBitmap? = null
 ) {
     if (totalSteps <= 0) return
 
-    drawTreasureMapBackground(theme, palette, contentWidth, contentHeight)
+    drawTreasureMapBackground(theme, palette, contentWidth, contentHeight, backgroundImage)
 
     val stepHeight = contentHeight / (totalSteps + 1)
     val centerX = contentWidth / 2f

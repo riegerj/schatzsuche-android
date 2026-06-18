@@ -15,6 +15,9 @@ data class ThemePalette(
     val mapDot: Color
 )
 
+/** Dateiname ohne Endung in `res/drawable-nodpi/`, z. B. `map_bg_pirates.webp` */
+fun HuntTheme.mapBackgroundResourceName(): String = "map_bg_${name.lowercase()}"
+
 fun HuntTheme.toPalette(): ThemePalette = when (this) {
     HuntTheme.PIRATES -> ThemePalette(
         primary = Color(0xFF5D3A1A),

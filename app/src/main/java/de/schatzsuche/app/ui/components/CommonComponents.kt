@@ -102,8 +102,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -126,6 +128,7 @@ import de.schatzsuche.app.data.model.PostScanTaskType
 import de.schatzsuche.app.data.model.RichContentBlock
 import de.schatzsuche.app.data.model.TaskResponse
 import de.schatzsuche.app.ui.theme.SchatzButtonDefaults
+import de.schatzsuche.app.ui.theme.mapBackgroundResourceName
 import de.schatzsuche.app.ui.theme.toPalette
 import de.schatzsuche.app.util.ImageUtil
 import de.schatzsuche.app.util.MediaStorage
@@ -252,7 +255,20 @@ fun TreasureMap(
     animateLatest: Boolean = true
 ) {
     val palette = theme.toPalette()
+    val context = LocalContext.current
     val density = LocalDensity.current
+    val mapBackground = remember(theme) {
+        val resId = context.resources.getIdentifier(
+            theme.mapBackgroundResourceName(),
+            "drawable",
+            context.packageName
+        )
+        if (resId != 0) {
+            runCatching { ImageBitmap.imageResource(context.resources, resId) }.getOrNull()
+        } else {
+            null
+        }
+    }
     val infiniteTransition = rememberInfiniteTransition(label = "map")
     val dashPhase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -340,7 +356,8 @@ fun TreasureMap(
                             animateLatest = animateLatest,
                             dashPhase = dashPhase,
                             contentWidth = contentWidthPx,
-                            contentHeight = contentHeightPx
+                            contentHeight = contentHeightPx,
+                            backgroundImage = mapBackground
                         )
                     }
                 }

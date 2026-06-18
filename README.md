@@ -51,6 +51,21 @@ Eine Android-App zum Erstellen und Spielen von QR-Code-basierten Schatzsuchen.
 3. **QR-Karten ausdrucken**, ausschneiden und verstecken (Hilfe im Admin-Modus)
 4. **Teilnehmer-Modus** → Schatzsuche starten und loslegen!
 
+### Schatzkarten-Hintergründe (optional)
+
+Eigene Hintergrundbilder pro Theme nach `app/src/main/res/drawable-nodpi/` kopieren:
+
+| Theme | Dateiname |
+|-------|-----------|
+| Piraten | `map_bg_pirates.webp` (oder `.png`) |
+| Weltraum | `map_bg_space.webp` |
+| Ritter & Verlies | `map_bg_knights.webp` |
+| Ägypten | `map_bg_egypt.webp` |
+| Klassisch | `map_bg_classic.webp` |
+| Dschungel | `map_bg_jungle.webp` |
+
+Fehlt eine Datei, wird der gezeichnete Standard-Hintergrund verwendet. Empfohlen: quadratisches Bild (z. B. 1024×1024 px), dezent und nicht zu kontrastreich.
+
 ## Berechtigungen
 
 - Kamera (QR-Scan)
