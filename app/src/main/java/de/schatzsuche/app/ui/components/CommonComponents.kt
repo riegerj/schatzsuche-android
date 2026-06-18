@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -98,6 +99,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -108,6 +110,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -366,6 +369,103 @@ fun ContentBlocksDisplay(
 }
 
 @Composable
+private fun ExpandableInstructionText(text: String) {
+    var expanded by remember { mutableStateOf(false) }
+    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = true },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(Modifier.fillMaxWidth()) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 44.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, containerColor)
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(10.dp)
+                    .size(36.dp)
+                    .background(
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.ZoomIn,
+                    contentDescription = "Hinweis vergrößern",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+
+    if (expanded) {
+        Dialog(
+            onDismissRequest = { expanded = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            BackHandler(onBack = { expanded = false })
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .heightIn(max = 520.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column {
+                    IconButton(
+                        onClick = { expanded = false },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Schließen")
+                    }
+                    Column(
+                        Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 24.dp, end = 24.dp, bottom = 28.dp)
+                    ) {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ContentBlocksDisplay(
     blocks: List<RichContentBlock>,
     modifier: Modifier = Modifier,
@@ -390,7 +490,11 @@ fun ContentBlocksDisplay(
             when (block.type) {
                 ContentBlockType.TEXT -> {
                     if (!block.text.isNullOrBlank()) {
-                        Text(block.text, style = MaterialTheme.typography.bodyLarge)
+                        if (immersiveMedia) {
+                            ExpandableInstructionText(text = block.text)
+                        } else {
+                            Text(block.text, style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
                 }
                 ContentBlockType.IMAGE -> {
