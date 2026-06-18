@@ -20,14 +20,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -64,8 +62,10 @@ import de.schatzsuche.app.data.model.toPostScanTasks
 import de.schatzsuche.app.data.model.toTaskResponses
 import de.schatzsuche.app.data.repository.SchatzsucheRepository
 import de.schatzsuche.app.ui.components.ContentBlocksDisplay
+import de.schatzsuche.app.ui.components.InstructionAudioPlayer
 import de.schatzsuche.app.ui.components.InstructionImageDisplay
 import de.schatzsuche.app.ui.components.InstructionMediaActions
+import de.schatzsuche.app.ui.components.InstructionVideoPlayer
 import de.schatzsuche.app.ui.components.LoadingBox
 import de.schatzsuche.app.ui.components.SchatzAppBar
 import de.schatzsuche.app.ui.components.SchatzConfirmDialog
@@ -482,17 +482,17 @@ fun StepEditScreen(
                                 }
                             }
                             de.schatzsuche.app.data.model.ContentBlockType.AUDIO -> {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.AudioFile, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Audio-Datei")
+                                block.mediaPath?.let { path ->
+                                    InstructionAudioPlayer(path = path, immersiveMedia = false)
                                 }
                             }
                             de.schatzsuche.app.data.model.ContentBlockType.VIDEO -> {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Videocam, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Video-Datei")
+                                block.mediaPath?.let { path ->
+                                    InstructionVideoPlayer(
+                                        path = path,
+                                        immersiveMedia = false,
+                                        onOpenFullScreen = {}
+                                    )
                                 }
                             }
                             else -> Unit

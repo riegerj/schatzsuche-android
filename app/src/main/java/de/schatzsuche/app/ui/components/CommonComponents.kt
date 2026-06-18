@@ -628,7 +628,7 @@ fun InstructionImageDisplay(
 }
 
 @Composable
-private fun InstructionAudioPlayer(path: String, immersiveMedia: Boolean) {
+fun InstructionAudioPlayer(path: String, immersiveMedia: Boolean) {
     var isPlaying by remember(path) { mutableStateOf(false) }
     val mediaPlayer = remember(path) { MediaPlayer() }
 
@@ -729,7 +729,7 @@ private fun AudioPlayingIndicator(isPlaying: Boolean, modifier: Modifier = Modif
 }
 
 @Composable
-private fun InstructionVideoPlayer(
+fun InstructionVideoPlayer(
     path: String,
     immersiveMedia: Boolean,
     onOpenFullScreen: () -> Unit
