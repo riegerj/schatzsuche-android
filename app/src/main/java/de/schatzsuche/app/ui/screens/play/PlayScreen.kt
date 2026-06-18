@@ -101,7 +101,7 @@ fun PlayScreen(
                         title = session?.participantName ?: "Schatzsuche",
                         actions = {
                             SchatzTextButton(onClick = { showCancelDialog = true }) {
-                                Text("Abbrechen", style = MaterialTheme.typography.titleSmall)
+                                Text("Schatzsuche abbrechen", style = MaterialTheme.typography.titleSmall)
                             }
                         }
                     )
@@ -245,7 +245,7 @@ fun PlayScreen(
             message = "Wenn du jetzt abbrichst, geht dein bisheriger Fortschritt verloren.",
             primaryLabel = "Weiterspielen",
             onPrimary = { showCancelDialog = false },
-            secondaryLabel = "Abbrechen",
+            secondaryLabel = "Schatzsuche abbrechen",
             onSecondary = {
                 showCancelDialog = false
                 viewModel.cancelSession(onCancelled)
