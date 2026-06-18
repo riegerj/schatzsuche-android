@@ -120,14 +120,9 @@ fun PlayScreen(
                             val step = uiState.currentStep
                             if (step != null) {
                                 Text(
-                                    step.title,
+                                    "${step.orderIndex + 1}. ${step.title}",
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    "Suche Hinweis Nr. ${step.orderIndex + 1}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.tertiary
                                 )
                                 ContentBlocksDisplay(
                                     blocks = step.instructionJson.toContentBlocks(),
