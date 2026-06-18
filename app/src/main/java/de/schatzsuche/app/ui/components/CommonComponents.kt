@@ -479,27 +479,54 @@ fun ContentBlocksDisplay(
     var fullScreenImageIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (showMedia && immersiveMedia && imagePaths.isNotEmpty()) {
-            InstructionImageGalleryCard(
-                imagePath = imagePaths.first(),
-                imageCount = imagePaths.size,
-                onOpen = { fullScreenImageIndex = 0 }
-            )
-        }
-        blocks.forEach { block ->
-            when (block.type) {
-                ContentBlockType.TEXT -> {
-                    if (!block.text.isNullOrBlank()) {
-                        if (immersiveMedia) {
-                            ExpandableInstructionText(text = block.text)
-                        } else {
+        if (immersiveMedia) {
+            blocks
+                .filter { it.type == ContentBlockType.TEXT && !it.text.isNullOrBlank() }
+                .forEach { block ->
+                    ExpandableInstructionText(text = block.text!!)
+                }
+
+            if (showMedia) {
+                if (imagePaths.isNotEmpty()) {
+                    InstructionImageGalleryCard(
+                        imagePath = imagePaths.first(),
+                        imageCount = imagePaths.size,
+                        onOpen = { fullScreenImageIndex = 0 }
+                    )
+                }
+                blocks
+                    .filter { it.type != ContentBlockType.TEXT }
+                    .forEach { block ->
+                        when (block.type) {
+                            ContentBlockType.IMAGE -> Unit
+                            ContentBlockType.AUDIO -> {
+                                block.mediaPath?.let { path ->
+                                    InstructionAudioPlayer(path = path, immersiveMedia = true)
+                                }
+                            }
+                            ContentBlockType.VIDEO -> {
+                                block.mediaPath?.let { path ->
+                                    InstructionVideoPlayer(
+                                        path = path,
+                                        immersiveMedia = true,
+                                        onOpenFullScreen = { fullScreenVideoPath = path }
+                                    )
+                                }
+                            }
+                            else -> Unit
+                        }
+                    }
+            }
+        } else {
+            blocks.forEach { block ->
+                when (block.type) {
+                    ContentBlockType.TEXT -> {
+                        if (!block.text.isNullOrBlank()) {
                             Text(block.text, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
-                }
-                ContentBlockType.IMAGE -> {
-                    if (!showMedia) return@forEach
-                    if (!immersiveMedia) {
+                    ContentBlockType.IMAGE -> {
+                        if (!showMedia) return@forEach
                         block.mediaPath?.let { path ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -523,21 +550,21 @@ fun ContentBlocksDisplay(
                             }
                         }
                     }
-                }
-                ContentBlockType.AUDIO -> {
-                    if (!showMedia) return@forEach
-                    block.mediaPath?.let { path ->
-                        InstructionAudioPlayer(path = path, immersiveMedia = immersiveMedia)
+                    ContentBlockType.AUDIO -> {
+                        if (!showMedia) return@forEach
+                        block.mediaPath?.let { path ->
+                            InstructionAudioPlayer(path = path, immersiveMedia = false)
+                        }
                     }
-                }
-                ContentBlockType.VIDEO -> {
-                    if (!showMedia) return@forEach
-                    block.mediaPath?.let { path ->
-                        InstructionVideoPlayer(
-                            path = path,
-                            immersiveMedia = immersiveMedia,
-                            onOpenFullScreen = { fullScreenVideoPath = path }
-                        )
+                    ContentBlockType.VIDEO -> {
+                        if (!showMedia) return@forEach
+                        block.mediaPath?.let { path ->
+                            InstructionVideoPlayer(
+                                path = path,
+                                immersiveMedia = false,
+                                onOpenFullScreen = { fullScreenVideoPath = path }
+                            )
+                        }
                     }
                 }
             }
